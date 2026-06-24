@@ -20,6 +20,7 @@ import {
   type FishSpot,
   type Vec3,
   type PlacedFurniture,
+  type TreeData,
 } from '../systems/save.ts';
 import { fishWaterPos, generateWorld } from '../systems/worldgen.ts';
 import { rollFish, rollBug } from '../config/spawns.ts';
@@ -1232,6 +1233,38 @@ export const useGameStore = create<GameState>()(
         const spot = s.plants.find((p) => p.id === spotId);
         if (!spot || spot.stage !== -1) return;
         const seedTypes = ['sapling', 'flower_seed', 'tomato_seed', 'carrot_seed', 'wheat_seed'] as const;
+        // 水果树苗：种下后直接创建新树
+        const fruitSaplings: Record<string, ItemId> = {
+          apple_sapling: 'apple',
+          orange_sapling: 'orange',
+          peach_sapling: 'peach',
+          cherry_sapling: 'cherry',
+        };
+        for (const [saplingId, fruitId] of Object.entries(fruitSaplings)) {
+          if ((s.inventory[saplingId as ItemId] ?? 0) > 0) {
+            // 移除坑位
+            const newPlants = s.plants.filter((p) => p.id !== spotId);
+            // 创建新果树
+            const newTree: TreeData = {
+              id: `fruit-tree-${Date.now()}`,
+              pos: spot.pos,
+              hp: 3,
+              state: 'intact',
+              regrowAt: null,
+              variant: Math.floor(Math.random() * 5), // 0-4 普通树模型
+              fruit: fruitId,
+              fruitCount: 2,
+              fruitReadyAt: null,
+            };
+            set({
+              plants: newPlants,
+              trees: [...s.trees, newTree],
+              inventory: { ...s.inventory, [saplingId as ItemId]: (s.inventory[saplingId as ItemId] ?? 0) - 1 },
+            });
+            get().pushToast(`种下了${ITEMS[saplingId as ItemId].name}，长出了一棵果树！`);
+            return;
+          }
+        }
         for (const seed of seedTypes) {
           if ((s.inventory[seed] ?? 0) > 0) {
             set({
