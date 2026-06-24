@@ -46,7 +46,6 @@ import { MapLandmarks } from './world/MapLandmarks.tsx';
 import { RegionalContent } from './world/RegionalContent.tsx';
 import { CloudShadows } from './world/CloudShadows.tsx';
 import { FlyingCritters } from './world/FlyingCritters.tsx';
-import { GodRays } from './world/GodRays.tsx';
 import { PostProcessing } from './PostProcessing.tsx';
 import { useGameStore } from '../store/useGameStore.ts';
 import { collectPlacementWarnings } from '../systems/placement.ts';
@@ -97,7 +96,6 @@ export function Experience() {
             <ShoreWaves />
             <CloudShadows />
             <FlyingCritters />
-            <GodRays />
             <Decorations />
             <MapLandmarks />
             <RegionalContent />
