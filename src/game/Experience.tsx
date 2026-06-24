@@ -41,6 +41,7 @@ import { SkyEffects } from './SkyEffects.tsx';
 import { FishInWater } from './world/FishInWater.tsx';
 import { Paths } from './world/Paths.tsx';
 import { ShoreDetail } from './world/ShoreDetail.tsx';
+import { ShoreWaves } from './world/ShoreWaves.tsx';
 import { MapLandmarks } from './world/MapLandmarks.tsx';
 import { RegionalContent } from './world/RegionalContent.tsx';
 import { useGameStore } from '../store/useGameStore.ts';
@@ -89,6 +90,7 @@ export function Experience() {
             <GroundDetails />
             <ShorelineDetails />
             <ShoreDetail />
+            <ShoreWaves />
             <Decorations />
             <MapLandmarks />
             <RegionalContent />
