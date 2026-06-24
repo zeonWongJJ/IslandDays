@@ -26,6 +26,12 @@ export type ItemId =
   // 种植
   | 'sapling' // 树苗
   | 'flower_seed' // 花种
+  | 'tomato_seed'
+  | 'carrot_seed'
+  | 'wheat_seed'
+  | 'tomato'
+  | 'carrot'
+  | 'wheat'
   // 矿石（工具升级材料）
   | 'iron_ore'
   | 'gold_ore'
@@ -62,7 +68,7 @@ export type ItemId =
   | 'recipe_lampTable'
   | 'recipe_rugSquare';
 
-export type ToolId = 'axe' | 'fishingRod' | 'net' | 'shovel';
+export type ToolId = 'axe' | 'fishingRod' | 'net' | 'shovel' | 'watering_can';
 
 export type FishItemId = 'fish_common' | 'fish_crucian' | 'fish_carp' | 'fish_bluegill' | 'fish_loach' | 'fish_salmon' | 'fish_mackerel' | 'fish_rare' | 'fish_mahi_mahi' | 'fish_legend';
 export type BugItemId = 'bug_common' | 'bug_cicada' | 'bug_beetle' | 'bug_dragonfly' | 'bug_moth' | 'bug_rare';
@@ -116,6 +122,12 @@ export const ITEMS: Record<ItemId, ItemDef> = {
   bug_rare: { id: 'bug_rare', name: '萤火虫', sellPrice: 480, buyPrice: 0, stack: 20, stackable: true, rarity: 'rare' },
   sapling: { id: 'sapling', name: '树苗', sellPrice: 20, buyPrice: 200, stack: 30, stackable: true, rarity: 'common' },
   flower_seed: { id: 'flower_seed', name: '花种', sellPrice: 10, buyPrice: 100, stack: 30, stackable: true, rarity: 'common' },
+  tomato_seed: { id: 'tomato_seed', name: '番茄种子', sellPrice: 10, buyPrice: 120, stack: 30, stackable: true, rarity: 'common' },
+  carrot_seed: { id: 'carrot_seed', name: '胡萝卜种子', sellPrice: 10, buyPrice: 100, stack: 30, stackable: true, rarity: 'common' },
+  wheat_seed: { id: 'wheat_seed', name: '小麦种子', sellPrice: 10, buyPrice: 80, stack: 30, stackable: true, rarity: 'common' },
+  tomato: { id: 'tomato', name: '番茄', sellPrice: 60, buyPrice: 0, stack: 30, stackable: true, rarity: 'common' },
+  carrot: { id: 'carrot', name: '胡萝卜', sellPrice: 50, buyPrice: 0, stack: 30, stackable: true, rarity: 'common' },
+  wheat: { id: 'wheat', name: '小麦', sellPrice: 40, buyPrice: 0, stack: 30, stackable: true, rarity: 'common' },
   iron_ore: { id: 'iron_ore', name: '铁矿石', sellPrice: 50, buyPrice: 500, stack: 30, stackable: true, rarity: 'common' },
   gold_ore: { id: 'gold_ore', name: '金矿石', sellPrice: 200, buyPrice: 2000, stack: 10, stackable: true, rarity: 'rare' },
   // 家具：可购买成品，也可用图纸合成。stack=1（独立实例）。
@@ -167,6 +179,7 @@ export const TOOLS: Record<ToolId, ToolDef> = {
   fishingRod: { id: 'fishingRod', name: '钓竿', buyPrice: 400, durability: 30, repairUnitPrice: 8 },
   net: { id: 'net', name: '捕虫网', buyPrice: 400, durability: 30, repairUnitPrice: 8 },
   shovel: { id: 'shovel', name: '铲子', buyPrice: 400, durability: 30, repairUnitPrice: 8 },
+  watering_can: { id: 'watering_can', name: '水壶', buyPrice: 300, durability: 40, repairUnitPrice: 6 },
 };
 
 export function itemName(id: ItemId): string {

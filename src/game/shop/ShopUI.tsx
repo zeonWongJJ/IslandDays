@@ -20,12 +20,13 @@ import { RECIPES, hasMaterials, hasRecipe } from '../../config/recipes.ts';
 import { TOOL_TIER_DUR } from '../../config/constants.ts';
 import { useGameStore } from '../../store/useGameStore.ts';
 
-const TOOL_ORDER: ToolId[] = ['axe', 'fishingRod', 'net', 'shovel'];
+const TOOL_ORDER: ToolId[] = ['axe', 'fishingRod', 'net', 'shovel', 'watering_can'];
 const TOOL_ICON: Record<ToolId, string> = {
   axe: '🪓',
   fishingRod: '🎣',
   net: '🦟',
   shovel: '🪏',
+  watering_can: '🚿',
 };
 
 // 可出售物品（有 sellPrice 的）
@@ -35,7 +36,9 @@ const SELL_ORDER: ItemId[] = [
   'fish_salmon', 'fish_mackerel', 'fish_rare', 'fish_mahi_mahi', 'fish_legend',
   'bug_common', 'bug_cicada', 'bug_beetle', 'bug_dragonfly', 'bug_moth', 'bug_rare',
   'sapling', 'flower_seed',
+  'tomato_seed', 'carrot_seed', 'wheat_seed', 'tomato', 'carrot', 'wheat',
   'iron_ore', 'gold_ore',  // <-- add
+  'tomato', 'carrot', 'wheat',
   'furniture_stool', 'furniture_table', 'furniture_bed', 'furniture_lamp', 'furniture_rug',
   'furniture_chair', 'furniture_sofa', 'furniture_bookcase', 'furniture_desk',
   'furniture_coffeeTable', 'furniture_bench', 'furniture_sideTable', 'furniture_cabinet',
@@ -63,6 +66,12 @@ const ITEM_ICON: Record<ItemId, string> = {
   bug_rare: '✨',
   sapling: '🌱',
   flower_seed: '🌸',
+  tomato_seed: '🟠',
+  carrot_seed: '🟠',
+  wheat_seed: '🟡',
+  tomato: '🍅',
+  carrot: '🥕',
+  wheat: '🌾',
   iron_ore: '🪨',
   gold_ore: '✨',
   furniture_stool: '🪑',
@@ -249,7 +258,7 @@ export function ShopUI() {
 
         {tab === 'plants' && (
           <div className="shop-list">
-            {['sapling', 'flower_seed'].map((id) => {
+            {['sapling', 'flower_seed', 'tomato_seed', 'carrot_seed', 'wheat_seed'].map((id) => {
               const def = ITEMS[id as ItemId];
               const count = inventory[id as ItemId] ?? 0;
               const price = def.buyPrice;

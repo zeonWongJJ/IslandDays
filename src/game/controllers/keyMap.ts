@@ -19,10 +19,11 @@ export const keyMap: KeyEntry[] = [
   { name: 'tool2', keys: ['Digit2'] },
   { name: 'tool3', keys: ['Digit3'] },
   { name: 'tool4', keys: ['Digit4'] },
+  { name: 'tool5', keys: ['Digit5'] },
   { name: 'holster', keys: ['KeyX', 'KeyQ'] },
 ];
 
 // 供代码里做按键名联合类型推断
 export type KeyName =
   | 'forward' | 'back' | 'left' | 'right' | 'run'
-  | 'interact' | 'tool1' | 'tool2' | 'tool3' | 'tool4' | 'holster';
+  | 'interact' | 'tool1' | 'tool2' | 'tool3' | 'tool4' | 'tool5' | 'holster';

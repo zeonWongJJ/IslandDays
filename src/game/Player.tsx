@@ -82,6 +82,8 @@ export function Player() {
   const setShopOpen = useGameStore((s) => s.setShopOpen);
   const digHole = useGameStore((s) => s.digHole);
   const plantAtSpot = useGameStore((s) => s.plantAtSpot);
+  const waterPlant = useGameStore((s) => s.waterPlant);
+  const harvestPlant = useGameStore((s) => s.harvestPlant);
   const mineRock = useGameStore((s) => s.mineRock);
 
   // 同步 playerRef 供相机/其它组件读取
@@ -487,7 +489,17 @@ export function Player() {
               soundManager.play('door');
             }
             else if (target.kind === 'plant') {
-              plantAtSpot(target.id);
+              const spot = plants.find((p) => p.id === target.id);
+              if (!spot) return;
+              if (spot.stage === -1) {
+                plantAtSpot(target.id);
+              } else if (spot.stage >= 2) {
+                harvestPlant(target.id);
+                soundManager.play('pickup');
+              } else {
+                waterPlant(target.id);
+                soundManager.play('equip');
+              }
             }
             else if (target.kind === 'rock') {
               mineRock(target.id);
@@ -526,6 +538,7 @@ export function Player() {
       { key: 'tool2', tool: 'fishingRod' },
       { key: 'tool3', tool: 'net' },
       { key: 'tool4', tool: 'shovel' },
+      { key: 'tool5', tool: 'watering_can' },
     ];
     for (const slot of toolSlots) {
       if (keys[slot.key] && !prevKeys.current[slot.key]) {

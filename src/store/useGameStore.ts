@@ -160,6 +160,8 @@ interface GameState extends SaveData {
   // 铲子种植
   digHole: (pos: Vec3) => void;
   plantAtSpot: (spotId: string) => void;
+  waterPlant: (spotId: string) => void;
+  harvestPlant: (spotId: string) => void;
   growPlants: () => void;
   mineRock: (rockId: string) => void;
 
@@ -963,7 +965,7 @@ export const useGameStore = create<GameState>()(
         const id = `plant-${Date.now()}`;
         const newDur = Math.max(0, dur - TOOL_USE.shovelCost);
         set({
-          plants: [...s.plants, { id, pos, itemId: 'sapling', plantedDay: s.clock.day, stage: -1 }],
+          plants: [...s.plants, { id, pos, itemId: 'sapling' as const, plantedDay: s.clock.day, stage: -1, wateredToday: false }],
           tools: { ...s.tools, shovel: newDur },
         });
         get().pushToast('挖好了一个坑');
@@ -973,32 +975,66 @@ export const useGameStore = create<GameState>()(
         const s = get();
         const spot = s.plants.find((p) => p.id === spotId);
         if (!spot || spot.stage !== -1) return;
-        if ((s.inventory.sapling ?? 0) > 0) {
-          set({
-            plants: s.plants.map((p) => p.id === spotId ? { ...p, itemId: 'sapling', stage: 0, plantedDay: s.clock.day } : p),
-            inventory: { ...s.inventory, sapling: (s.inventory.sapling ?? 0) - 1 },
-          });
-          get().pushToast('种下了一棵树苗');
-        } else if ((s.inventory.flower_seed ?? 0) > 0) {
-          set({
-            plants: s.plants.map((p) => p.id === spotId ? { ...p, itemId: 'flower_seed', stage: 0, plantedDay: s.clock.day } : p),
-            inventory: { ...s.inventory, flower_seed: (s.inventory.flower_seed ?? 0) - 1 },
-          });
-          get().pushToast('种下了花种');
-        } else {
-          get().pushToast('需要树苗或花种');
+        const seedTypes = ['sapling', 'flower_seed', 'tomato_seed', 'carrot_seed', 'wheat_seed'] as const;
+        for (const seed of seedTypes) {
+          if ((s.inventory[seed] ?? 0) > 0) {
+            set({
+              plants: s.plants.map((p) =>
+                p.id === spotId ? { ...p, itemId: seed, stage: 0, plantedDay: s.clock.day, wateredToday: false } : p,
+              ),
+              inventory: { ...s.inventory, [seed]: (s.inventory[seed] ?? 0) - 1 },
+            });
+            get().pushToast(`种下了${ITEMS[seed].name}`);
+            return;
+          }
         }
+        get().pushToast('需要树苗或种子');
+      },
+
+      waterPlant: (spotId) => {
+        const s = get();
+        if (s.equipped !== 'watering_can') { get().pushToast('需要装备水壶（按 5）'); return; }
+        const dur = s.tools.watering_can ?? 0;
+        if (dur <= 0) { get().pushToast('水壶没水了，去商店维修'); return; }
+        const spot = s.plants.find((p) => p.id === spotId);
+        if (!spot || spot.stage < 0 || spot.stage >= 2) return;
+        if (spot.wateredToday) { get().pushToast('今天已经浇过水了'); return; }
+        const newDur = Math.max(0, dur - TOOL_USE.waterCost);
+        set({
+          plants: s.plants.map((p) => (p.id === spotId ? { ...p, wateredToday: true } : p)),
+          tools: { ...s.tools, watering_can: newDur },
+        });
+        get().pushToast('浇了水，明天会长大');
+      },
+
+      harvestPlant: (spotId) => {
+        const s = get();
+        const spot = s.plants.find((p) => p.id === spotId);
+        if (!spot || spot.stage < 2) return;
+        const produceMap: Partial<Record<string, ItemId>> = {
+          sapling: 'wood',
+          flower_seed: 'flower_seed',
+          tomato_seed: 'tomato',
+          carrot_seed: 'carrot',
+          wheat_seed: 'wheat',
+        };
+        const produceId = produceMap[spot.itemId];
+        if (!produceId) { get().pushToast('没什么可收获的'); return; }
+        set({
+          plants: s.plants.filter((p) => p.id !== spotId),
+          inventory: { ...s.inventory, [produceId]: (s.inventory[produceId] ?? 0) + 1 },
+        });
+        get().pushToast(`收获了${ITEMS[produceId].name}`);
       },
 
       growPlants: () => {
         const s = get();
         const changed = s.plants.map((p) => {
-          if (p.stage < 0 || p.stage >= 2) return p;
-          const daysSince = s.clock.day - p.plantedDay;
-          const targetStage = daysSince >= 3 ? 2 : daysSince >= 1 ? 1 : 0;
-          return targetStage > p.stage ? { ...p, stage: targetStage } : p;
+          if (p.stage < 0 || p.stage >= 2) return { ...p, wateredToday: false };
+          if (!p.wateredToday) return { ...p, wateredToday: false };
+          return { ...p, stage: p.stage + 1, wateredToday: false };
         });
-        if (changed.some((p, i) => p.stage !== s.plants[i].stage)) {
+        if (changed.some((p, i) => p.stage !== s.plants[i].stage || p.wateredToday !== s.plants[i].wateredToday)) {
           set({ plants: changed });
         }
       },

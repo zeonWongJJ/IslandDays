@@ -52,9 +52,10 @@ export interface BugSpot {
 export interface PlantSpot {
   id: string;
   pos: Vec3;
-  itemId: 'sapling' | 'flower_seed';
+  itemId: 'sapling' | 'flower_seed' | 'tomato_seed' | 'carrot_seed' | 'wheat_seed';
   plantedDay: number;
   stage: number; // -1=hole, 0=sprout, 1=sapling, 2=grown
+  wateredToday: boolean;
 }
 
 export interface RockSpot {
@@ -218,6 +219,15 @@ const migrations: Record<number, Migration> = {
       volleyballDay: null,
     },
   }),
+  14: (d) => {
+    const plants = (d as Loose).plants as Loose[] | undefined;
+    return {
+      ...d,
+      plants: Array.isArray(plants)
+        ? plants.map((p: Loose) => ({ ...p, wateredToday: (p as { wateredToday?: boolean }).wateredToday ?? false }))
+        : [],
+    };
+  },
 };
 
 function isWeather(value: unknown): value is WeatherPattern {

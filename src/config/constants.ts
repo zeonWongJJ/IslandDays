@@ -55,6 +55,8 @@ export const TOOL_USE = {
   netCost: 1,
   // 铲子每次挖坑消耗耐久。
   shovelCost: 1,
+  // 水壶每次浇水消耗耐久。
+  waterCost: 1,
 } as const;
 
 // 工具各等级最大耐久：[Lv1, Lv2, Lv3]
@@ -63,6 +65,7 @@ export const TOOL_TIER_DUR: Record<string, [number, number, number]> = {
   fishingRod: [30, 60, 100],
   net: [30, 60, 100],
   shovel: [30, 60, 100],
+  watering_can: [40, 70, 120],
 };
 
 export const MINE = {
@@ -190,6 +193,6 @@ export const MUSEUM = {
 export const SAVE = {
   // localStorage key。改 schema 时升 version 并在 save.ts 写迁移。
   key: 'ac-save-v1',
-  // 存档版本号，与 SaveData.version 对应。v13 添加区域探索进度。
-  version: 13 as const,
+  // 存档版本号，与 SaveData.version 对应。v14 种植进阶：wateredToday。
+  version: 14 as const,
 } as const;

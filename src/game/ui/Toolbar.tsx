@@ -4,12 +4,13 @@
 import { TOOLS, type ToolId } from '../../config/items.ts';
 import { useGameStore } from '../../store/useGameStore.ts';
 
-const SLOT_ORDER: ToolId[] = ['axe', 'fishingRod', 'net', 'shovel'];
+const SLOT_ORDER: ToolId[] = ['axe', 'fishingRod', 'net', 'shovel', 'watering_can'];
 const ICON: Record<ToolId, string> = {
   axe: '🪓',
   fishingRod: '🎣',
   net: '🦟',
   shovel: '🪏',
+  watering_can: '🚿',
 };
 
 export function Toolbar() {

@@ -105,9 +105,18 @@ export function findInteractionTarget({
   }
 
   for (const p of plants) {
-    if (p.stage !== -1) continue;
-    const dist = Math.hypot(playerX - p.pos[0], playerZ - p.pos[2]);
-    if (dist <= WORLD.interactRadius) targets.push({ kind: 'plant', id: p.id, dist, spot: p });
+    if (p.stage === -1) {
+      const dist = Math.hypot(playerX - p.pos[0], playerZ - p.pos[2]);
+      if (dist <= WORLD.interactRadius) targets.push({ kind: 'plant', id: p.id, dist, spot: p });
+    } else if (p.stage >= 0 && p.stage < 2) {
+      // 可浇水
+      const dist = Math.hypot(playerX - p.pos[0], playerZ - p.pos[2]);
+      if (dist <= WORLD.interactRadius) targets.push({ kind: 'plant', id: p.id, dist, spot: p });
+    } else if (p.stage >= 2) {
+      // 可收获
+      const dist = Math.hypot(playerX - p.pos[0], playerZ - p.pos[2]);
+      if (dist <= WORLD.interactRadius) targets.push({ kind: 'plant', id: p.id, dist, spot: p });
+    }
   }
 
   for (const r of rocks) {
@@ -137,7 +146,12 @@ export function interactionHint(target: InteractionTarget, equipped: ToolId | nu
   if (target.kind === 'house') return '按 E 进屋';
   if (target.kind === 'fish') return equipped === 'fishingRod' ? '按 E 抛竿钓鱼' : '装备钓竿才能钓鱼（按 2）';
   if (target.kind === 'bug') return equipped === 'net' ? '按 E 挥网捕虫' : '装备捕虫网才能捕虫（按 3）';
-  if (target.kind === 'plant') return '按 E 种植';
+  if (target.kind === 'plant') {
+    if (target.spot.stage === -1) return '按 E 种植';
+    if (target.spot.stage >= 2) return '按 E 收获';
+    if (equipped === 'watering_can') return target.spot.wateredToday ? '今天已浇水' : '按 E 浇水';
+    return '装备水壶浇水（按 5）';
+  }
   if (target.kind === 'rock') return equipped === 'shovel' ? '按 E 采矿' : '需要装备铲子才能采矿（按 4）';
   return equipped === 'axe' ? '按 E 砍树' : '装备斧头才能砍树（按 1）';
 }
