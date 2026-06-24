@@ -1216,6 +1216,18 @@ export const useGameStore = create<GameState>()(
         regionProgress: s.regionProgress,
       }),
       migrate: migrateSave,
+      merge: (persisted, current) => {
+        const p = persisted as Partial<SaveData> | undefined;
+        const world = generateWorld();
+        return {
+          ...current,
+          ...p,
+          trees: mergeById(p?.trees ?? [], world.trees),
+          fishSpots: mergeFishSpots(p?.fishSpots, world.fishSpots),
+          bugs: mergeById(p?.bugs ?? [], world.bugs),
+          rocks: mergeById(p?.rocks ?? [], world.rocks),
+        };
+      },
     },
   ),
 );
