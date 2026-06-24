@@ -36,6 +36,7 @@ import { blocksWalking, groundKind, nearestWalkable } from '../systems/terrain.t
 import { currentEvent } from '../config/events.ts';
 import type { WorldFeatureId } from '../config/worldFeatures.ts';
 import { createTurnipMarket } from '../systems/turnipMarket.ts';
+import { generateDailyQuest } from '../systems/quest.ts';
 
 // xorshift32 —— 简单确定性随机，避免引入额外依赖。
 function makeRng(seed: number) {
@@ -134,6 +135,14 @@ interface GameState extends SaveData {
   startSwimming: () => void;
   /** 离开游泳模式 */
   stopSwimming: () => void;
+
+  // NPC 任务
+  /** 接受任务 */
+  acceptQuest: (questId: string) => void;
+  /** 更新任务进度 */
+  updateQuestProgress: (itemId: ItemId, amount: number) => void;
+  /** 领取任务奖励 */
+  claimQuestReward: (questId: string) => void;
 
   // 钓鱼
   /** 开始一次钓鱼（抛竿）。由 Player 在按 E 时调用。 */
@@ -478,6 +487,16 @@ export const useGameStore = create<GameState>()(
           set({ turnipMarket: market });
           get().pushToast('大头菜市场开门了！周日可以买大头菜');
         }
+        // 每天生成新任务
+        if (nextClock.minutes === 0) {
+          const newQuests = [
+            generateDailyQuest('mira', nextClock.day),
+            generateDailyQuest('tao', nextClock.day),
+            generateDailyQuest('lina', nextClock.day),
+          ];
+          set({ quests: newQuests });
+          get().pushToast('新的委托任务来了！');
+        }
       },
 
       setWeather: (weather) => set({ weather }),
@@ -515,6 +534,7 @@ export const useGameStore = create<GameState>()(
           museumPanel: false,
           booted: true,
           swimming: false,
+          quests: [],
         });
       },
 
@@ -688,6 +708,40 @@ export const useGameStore = create<GameState>()(
         if (!s.swimming) return;
         set({ swimming: false });
         get().pushToast('离开游泳模式');
+      },
+
+      // ───────── NPC 任务 ─────────
+      acceptQuest: (questId) => {
+        const s = get();
+        const quest = s.quests.find((q) => q.id === questId);
+        if (!quest || quest.completed) return;
+        // 任务已经激活，直接接受
+        get().pushToast('接受任务！');
+      },
+
+      updateQuestProgress: (itemId, amount) => {
+        const s = get();
+        const updatedQuests = s.quests.map((q) => {
+          if (q.completed || q.target !== itemId) return q;
+          const newProgress = Math.min(q.progress + amount, q.required);
+          const completed = newProgress >= q.required;
+          if (completed && !q.completed) {
+            get().pushToast(`任务完成！去找${q.npcId === 'mira' ? '米拉' : q.npcId === 'tao' ? '小涛' : '莉娜'}领奖`);
+          }
+          return { ...q, progress: newProgress, completed };
+        });
+        set({ quests: updatedQuests });
+      },
+
+      claimQuestReward: (questId) => {
+        const s = get();
+        const quest = s.quests.find((q) => q.id === questId);
+        if (!quest || !quest.completed || quest.claimed) return;
+        set({
+          player: { ...s.player, bells: s.player.bells + quest.rewardBells },
+          quests: s.quests.map((q) => q.id === questId ? { ...q, claimed: true } : q),
+        });
+        get().pushToast(`领取奖励：${quest.rewardBells} 铃钱`);
       },
 
       // ───────── 钓鱼 ─────────
@@ -1374,6 +1428,7 @@ export const useGameStore = create<GameState>()(
         regionProgress: s.regionProgress,
         turnipMarket: s.turnipMarket,
         swimming: s.swimming,
+        quests: s.quests,
       }),
       migrate: migrateSave,
       merge: (persisted, current) => {

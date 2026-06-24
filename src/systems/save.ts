@@ -143,6 +143,8 @@ export interface SaveData {
   turnipMarket: import('./turnipMarket.ts').TurnipMarket | null;
   /** 游泳状态 */
   swimming: boolean;
+  /** NPC 任务 */
+  quests: import('./quest.ts').Quest[];
 }
 
 export function realClockNow(): { day: number; minutes: number } {
@@ -274,6 +276,11 @@ const migrations: Record<number, Migration> = {
     ...d,
     swimming: (d as Loose).swimming ?? false,
   }),
+  // v19：NPC 任务系统
+  19: (d) => ({
+    ...d,
+    quests: Array.isArray((d as Loose).quests) ? (d as Loose).quests : [],
+  }),
 };
 
 function isWeather(value: unknown): value is WeatherPattern {
@@ -324,6 +331,7 @@ export function defaultSave(): SaveData {
     },
     turnipMarket: null,
     swimming: false,
+    quests: [],
   };
 }
 

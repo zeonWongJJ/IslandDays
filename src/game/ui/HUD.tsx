@@ -40,6 +40,7 @@ export function HUD() {
       regionProgress: { collectedShells: {}, volleyballDay: null, ruinRunes: 0, ruinChestOpened: false },
       turnipMarket: null,
       swimming: false,
+      quests: [],
     });
   }, [trees, plants, paths, house, museumDonations, collection]);
 
