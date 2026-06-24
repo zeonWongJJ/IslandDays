@@ -3,6 +3,26 @@ import { useMemo } from 'react';
 import type { ReactNode } from 'react';
 import * as THREE from 'three';
 import type { ItemId } from '../../config/items.ts';
+import type { Season } from '../../config/constants.ts';
+
+const SEASON_HUE_SHIFT: Record<Season, number> = {
+  spring: 0.02,
+  summer: 0,
+  fall: 0.07,
+  winter: -0.02,
+};
+const SEASON_SAT_SHIFT: Record<Season, number> = {
+  spring: 0.06,
+  summer: 0,
+  fall: 0.05,
+  winter: -0.15,
+};
+const SEASON_LIGHT_SHIFT: Record<Season, number> = {
+  spring: 0.02,
+  summer: 0,
+  fall: -0.05,
+  winter: 0.06,
+};
 
 function applyModelQuality(root: THREE.Object3D, opacity = 1) {
   root.traverse((child) => {
@@ -62,10 +82,32 @@ const TREE_PATHS = [
 ];
 TREE_PATHS.forEach((p) => useGLTF.preload(p));
 
-export function KenneyTree({ variant, opacity = 1 }: { variant: number; opacity?: number }) {
+export function KenneyTree({ variant, opacity = 1, season }: { variant: number; opacity?: number; season?: Season }) {
   const path = TREE_PATHS[variant % TREE_PATHS.length];
-  const group = useAutoCenteredModel(path, 1.12, opacity);
-  return <primitive object={group} />;
+  const group = useAutoCenteredModel(path, 1.4, opacity);
+  return useMemo(() => {
+    if (!season || season === 'summer') return <primitive object={group} />;
+    const h = SEASON_HUE_SHIFT[season];
+    const s = SEASON_SAT_SHIFT[season];
+    const l = SEASON_LIGHT_SHIFT[season];
+    if (h === 0 && s === 0 && l === 0) return <primitive object={group} />;
+    const clone = group.clone();
+    clone.traverse((child) => {
+      if (child instanceof THREE.Mesh) {
+        const materials = Array.isArray(child.material) ? child.material : [child.material];
+        for (const mat of materials) {
+          if (mat instanceof THREE.MeshStandardMaterial || mat instanceof THREE.MeshBasicMaterial) {
+            const hsl = { h: 0, s: 0, l: 0 };
+            mat.color.getHSL(hsl);
+            if (hsl.h > 0.15 && hsl.h < 0.45) {
+              mat.color.offsetHSL(h, s, l);
+            }
+          }
+        }
+      }
+    });
+    return <primitive object={clone} />;
+  }, [group, season]);
 }
 
 // ── Furniture ──

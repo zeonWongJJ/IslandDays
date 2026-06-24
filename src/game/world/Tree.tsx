@@ -9,14 +9,18 @@ import { useFrame } from '@react-three/fiber';
 import { useMemo, useRef, useState } from 'react';
 import * as THREE from 'three';
 import { TREE } from '../../config/constants.ts';
+import { seasonOf } from '../../config/weather.ts';
 import type { TreeData, TreeState } from '../../systems/save.ts';
 import { groundHeight } from '../../systems/terrain.ts';
 import { useOcclusionOpacity } from '../controllers/useOcclusionOpacity.ts';
+import { useGameStore } from '../../store/useGameStore.ts';
 import { KenneyTree } from './KenneyModels.tsx';
 
 export function Tree({ data }: { data: TreeData }) {
   const [x, , z] = data.pos;
   const y = useMemo(() => groundHeight(x, z), [x, z]);
+  const day = useGameStore((s) => s.clock.day);
+  const season = seasonOf(day);
   const floorDetails = useMemo(() => {
     const result: { x: number; z: number; s: number; rot: number; color: string }[] = [];
     let seed = (data.variant + 1) * 9301 + Math.floor((x + 80) * 17) + Math.floor((z + 80) * 31);
@@ -139,7 +143,7 @@ export function Tree({ data }: { data: TreeData }) {
     );
   }
 
-  const kenneyScale = 2.9 + (data.variant % 4) * 0.14;
+  const kenneyScale = 3.7 + (data.variant % 4) * 0.18;
   const isPalm = data.variant >= 9;
   const palmScale = isPalm ? kenneyScale * 0.85 : kenneyScale;
 
@@ -164,7 +168,7 @@ export function Tree({ data }: { data: TreeData }) {
       <group ref={wholeRef}>
         <group ref={crownRef}>
           <group scale={[palmScale, palmScale, palmScale]}>
-            <KenneyTree variant={data.variant} opacity={crownOpacity} />
+            <KenneyTree variant={data.variant} opacity={crownOpacity} season={season} />
           </group>
           <mesh position={[0, 0.14, 0]} castShadow>
             <cylinderGeometry args={[0.34, 0.52, 0.28, 8]} />
