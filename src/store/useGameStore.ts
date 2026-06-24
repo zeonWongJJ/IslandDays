@@ -78,6 +78,8 @@ interface GameState extends SaveData {
   currentRoom: RoomId;
   /** 博物馆捐赠面板是否打开。瞬时状态，不持久化。 */
   museumPanel: boolean;
+  /** 是否已通过标题画面进入游戏。瞬时状态，不持久化。 */
+  booted: boolean;
 
   // ───────── 动作 ─────────
   setPlayer: (pos: Vec3, yaw: number) => void;
@@ -95,7 +97,7 @@ interface GameState extends SaveData {
   pushToast: (text: string) => void;
   dismissToast: (id: number) => void;
   setInteractHint: (text: string | null) => void;
-  resetGame: () => void;
+  resetGame: (name?: string) => void;
 
   // 商店
   buyTool: (tool: ToolId) => boolean;
@@ -168,6 +170,10 @@ interface GameState extends SaveData {
   claimMuseumReward: () => void;
   setMuseumPanel: (open: boolean) => void;
   interactWorldFeature: (id: WorldFeatureId) => void;
+
+  // 标题画面
+  setBooted: (v: boolean) => void;
+  setPlayerName: (name: string) => void;
 }
 
 let toastSeq = 1;
@@ -245,6 +251,7 @@ export const useGameStore = create<GameState>()(
       dialogue: null,
       currentRoom: 'living' as RoomId,
       museumPanel: false,
+      booted: false,
 
       setPlayer: (pos, yaw) =>
         set((s) => ({ player: { ...s.player, pos, yaw } })),
@@ -404,26 +411,28 @@ export const useGameStore = create<GameState>()(
 
       setInteractHint: (text) => set({ interactHint: text }),
 
-      resetGame: () => {
+      resetGame: (name) => {
         localStorage.removeItem(SAVE.key);
         const base = defaultSave();
         const world = generateWorld();
         set({
           ...base,
+          player: { ...base.player, name: name ?? base.player.name },
           trees: world.trees,
           drops: world.drops,
           fishSpots: world.fishSpots,
-        bugs: world.bugs,
-        rocks: world.rocks,
-        house: base.house,
-        scene: base.scene,
-        toasts: [],
+          bugs: world.bugs,
+          rocks: world.rocks,
+          house: base.house,
+          scene: base.scene,
+          toasts: [],
           interactHint: null,
           fishing: { phase: 'idle', spotId: null, prompt: null, reelingProgress: 0 },
           shopOpen: false,
           placing: { active: false, itemId: null, pickupId: null },
           dialogue: null,
           museumPanel: false,
+          booted: true,
         });
       },
 
@@ -1081,6 +1090,9 @@ export const useGameStore = create<GameState>()(
       },
 
       setMuseumPanel: (open) => set({ museumPanel: open }),
+
+      setBooted: (v) => set({ booted: v }),
+      setPlayerName: (name) => set((s) => ({ player: { ...s.player, name } })),
     }),
     {
       name: SAVE.key,
