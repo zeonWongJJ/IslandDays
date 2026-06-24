@@ -5,6 +5,7 @@ import type { AnimalId } from '../config/animals.ts';
 import { ANIMALS, animalPositionAt } from '../config/animals.ts';
 import { MAP_LAYOUT } from '../config/mapLayout.ts';
 import type { ToolId } from '../config/items.ts';
+import { ITEMS } from '../config/items.ts';
 import type { BugSpot, FishSpot, RockSpot, TreeData, PlantSpot, PathTile } from '../systems/save.ts';
 import { MUSEUM } from '../config/constants.ts';
 import { WORLD_FEATURES, type WorldFeatureId } from '../config/worldFeatures.ts';
@@ -17,7 +18,7 @@ export type InteractionTarget =
   | { kind: 'house'; dist: number }
   | { kind: 'fish'; id: string; dist: number }
   | { kind: 'bug'; id: string; dist: number }
-  | { kind: 'tree'; id: string; dist: number }
+  | { kind: 'tree'; id: string; dist: number; hasFruit: boolean; fruitName?: string }
   | { kind: 'plant'; id: string; dist: number; spot: PlantSpot }
   | { kind: 'rock'; id: string; dist: number }
   | { kind: 'feature'; id: WorldFeatureId; dist: number }
@@ -110,7 +111,11 @@ export function findInteractionTarget({
   for (const t of trees) {
     if (t.state !== 'intact') continue;
     const dist = Math.hypot(playerX - t.pos[0], playerZ - t.pos[2]);
-    if (dist <= WORLD.interactRadius) targets.push({ kind: 'tree', id: t.id, dist });
+    if (dist <= WORLD.interactRadius) {
+      const hasFruit = t.fruit !== null && t.fruitCount > 0;
+      const fruitName = hasFruit ? ITEMS[t.fruit!].name : undefined;
+      targets.push({ kind: 'tree', id: t.id, dist, hasFruit, fruitName });
+    }
   }
 
   for (const p of plants) {
@@ -163,5 +168,9 @@ export function interactionHint(target: InteractionTarget, equipped: ToolId | nu
   }
   if (target.kind === 'rock') return equipped === 'shovel' ? '按 E 采矿' : '需要装备铲子才能采矿（按 4）';
   if (target.kind === 'path') return '按 E 拆除道路';
+  if (target.kind === 'tree') {
+    if (target.hasFruit) return `按 E 摘${target.fruitName ?? '果实'}`;
+    return equipped === 'axe' ? '按 E 砍树' : '装备斧头才能砍树（按 1）';
+  }
   return equipped === 'axe' ? '按 E 砍树' : '装备斧头才能砍树（按 1）';
 }

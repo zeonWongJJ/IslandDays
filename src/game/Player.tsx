@@ -59,6 +59,7 @@ export function Player() {
 
   const setPlayer = useGameStore((s) => s.setPlayer);
   const chopTree = useGameStore((s) => s.chopTree);
+  const harvestFruit = useGameStore((s) => s.harvestFruit);
   const pickupDrop = useGameStore((s) => s.pickupDrop);
   const equipTool = useGameStore((s) => s.equipTool);
   const setInteractHint = useGameStore((s) => s.setInteractHint);
@@ -476,7 +477,16 @@ export function Player() {
           const t = clock.elapsedTime;
           if (t - lastChop.current >= 0.3) {
             lastChop.current = t;
-            if (target.kind === 'tree') { chopTree(target.id); soundManager.play('chop'); }
+            if (target.kind === 'tree') {
+              const tree = trees.find((tr) => tr.id === target.id);
+              if (tree && tree.fruit && tree.fruitCount > 0) {
+                harvestFruit(target.id);
+                soundManager.play('pickup');
+              } else {
+                chopTree(target.id);
+                soundManager.play('chop');
+              }
+            }
             else if (target.kind === 'feature') interactWorldFeature(target.id);
             else if (target.kind === 'fish') { startFishing(target.id); soundManager.play('cast'); }
             else if (target.kind === 'npc') talkToNpc(target.id);

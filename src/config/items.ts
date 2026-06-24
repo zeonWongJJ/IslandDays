@@ -35,6 +35,16 @@ export type ItemId =
   // 海滩
   | 'coconut'
   | 'driftwood'
+  // 水果
+  | 'apple'
+  | 'orange'
+  | 'peach'
+  | 'cherry'
+  // 水果树苗
+  | 'apple_sapling'
+  | 'orange_sapling'
+  | 'peach_sapling'
+  | 'cherry_sapling'
   // 道路
   | 'path_stone'
   | 'path_brick'
@@ -138,6 +148,16 @@ export const ITEMS: Record<ItemId, ItemDef> = {
   wheat: { id: 'wheat', name: '小麦', sellPrice: 40, buyPrice: 0, stack: 30, stackable: true, rarity: 'common' },
   coconut: { id: 'coconut', name: '椰子', sellPrice: 80, buyPrice: 0, stack: 30, stackable: true, rarity: 'common' },
   driftwood: { id: 'driftwood', name: '漂流木', sellPrice: 25, buyPrice: 0, stack: 30, stackable: true, rarity: 'common' },
+  // 水果
+  apple: { id: 'apple', name: '苹果', sellPrice: 100, buyPrice: 0, stack: 30, stackable: true, rarity: 'common' },
+  orange: { id: 'orange', name: '橙子', sellPrice: 100, buyPrice: 0, stack: 30, stackable: true, rarity: 'common' },
+  peach: { id: 'peach', name: '桃子', sellPrice: 120, buyPrice: 0, stack: 30, stackable: true, rarity: 'common' },
+  cherry: { id: 'cherry', name: '樱桃', sellPrice: 150, buyPrice: 0, stack: 30, stackable: true, rarity: 'rare' },
+  // 水果树苗
+  apple_sapling: { id: 'apple_sapling', name: '苹果树苗', sellPrice: 40, buyPrice: 400, stack: 10, stackable: true, rarity: 'common' },
+  orange_sapling: { id: 'orange_sapling', name: '橙子树苗', sellPrice: 40, buyPrice: 400, stack: 10, stackable: true, rarity: 'common' },
+  peach_sapling: { id: 'peach_sapling', name: '桃子树苗', sellPrice: 50, buyPrice: 500, stack: 10, stackable: true, rarity: 'common' },
+  cherry_sapling: { id: 'cherry_sapling', name: '樱桃树苗', sellPrice: 60, buyPrice: 600, stack: 10, stackable: true, rarity: 'rare' },
   path_stone: { id: 'path_stone', name: '石砖路', sellPrice: 5, buyPrice: 100, stack: 99, stackable: true, rarity: 'common' },
   path_brick: { id: 'path_brick', name: '砖块路', sellPrice: 5, buyPrice: 120, stack: 99, stackable: true, rarity: 'common' },
   path_wood: { id: 'path_wood', name: '木板路', sellPrice: 5, buyPrice: 150, stack: 99, stackable: true, rarity: 'common' },

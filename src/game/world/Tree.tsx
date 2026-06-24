@@ -190,6 +190,29 @@ export function Tree({ data }: { data: TreeData }) {
               </mesh>
             ));
           })()}
+          {data.fruit && data.fruitCount > 0 && !isPalm && (() => {
+            const FRUIT_COLORS: Record<string, string> = {
+              apple: '#e03030',
+              orange: '#f0a030',
+              peach: '#f0b0a0',
+              cherry: '#c02040',
+            };
+            const color = FRUIT_COLORS[data.fruit] ?? '#e03030';
+            const positions: [number, number, number][] = [];
+            let seed = data.variant * 7919 + Math.floor(x * 13) + Math.floor(z * 29);
+            const rng = () => { seed = (seed * 1664525 + 1013904223) >>> 0; return (seed >>> 0) / 4294967295; };
+            for (let i = 0; i < data.fruitCount; i++) {
+              const a = rng() * Math.PI * 2;
+              const r = 0.4 + rng() * 0.4;
+              positions.push([Math.cos(a) * r, 0.8 + rng() * 0.3, Math.sin(a) * r]);
+            }
+            return positions.map((p, i) => (
+              <mesh key={`fruit-${i}`} position={p} castShadow>
+                <sphereGeometry args={[0.09, 6, 6]} />
+                <meshStandardMaterial color={color} flatShading roughness={0.8} />
+              </mesh>
+            ));
+          })()}
         </group>
       </group>
     </group>

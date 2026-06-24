@@ -5,6 +5,10 @@ import { WORLD, FISH, BUG, MINE } from '../config/constants.ts';
 import { blocksWalking, groundKind } from './terrain.ts';
 import { acceptsTreePlacement } from './placement.ts';
 import type { BugSpot, DropData, FishSpot, RockSpot, TreeData, Vec3 } from './save.ts';
+import type { ItemId } from '../config/items.ts';
+
+const FRUIT_TYPES: ItemId[] = ['apple', 'orange', 'peach', 'cherry'];
+const FRUIT_PROBABILITY = 0.3; // 30% 的普通树是果树
 
 // xorshift32 —— 简单确定性随机，避免引入额外依赖。
 function makeRng(seed: number) {
@@ -63,6 +67,9 @@ export function generateWorld(seed = 20240618): GeneratedWorld {
       state: 'intact',
       regrowAt: null,
       variant: Math.floor(rng() * 9),
+      fruit: rng() < FRUIT_PROBABILITY ? FRUIT_TYPES[Math.floor(rng() * FRUIT_TYPES.length)] : null,
+      fruitCount: rng() < FRUIT_PROBABILITY ? Math.floor(rng() * 3) + 1 : 0,
+      fruitReadyAt: null,
     });
   }
 
@@ -88,6 +95,9 @@ export function generateWorld(seed = 20240618): GeneratedWorld {
       state: 'intact',
       regrowAt: null,
       variant: 9 + Math.floor(rng() * 2),
+      fruit: 'coconut',
+      fruitCount: Math.floor(rng() * 2) + 1,
+      fruitReadyAt: null,
     });
   }
 

@@ -13,9 +13,15 @@ export interface TreeData {
   pos: Vec3;
   hp: number;
   state: TreeState;
-  /** 当 state==='stump' 时，到达此“游戏分钟”时间戳后重生。 */
+  /** 当 state==='stump' 时，到达此"游戏分钟"时间戳后重生。 */
   regrowAt: number | null;
   variant: number; // 外观变体索引，用于多种树模型
+  /** 果树类型：apple/orange/peach/cherry，null 表示普通树 */
+  fruit: ItemId | null;
+  /** 树上当前果实数量 */
+  fruitCount: number;
+  /** 果实再生时间（游戏分钟），null 表示无果实或未成熟 */
+  fruitReadyAt: number | null;
 }
 
 export interface DropData {
@@ -241,6 +247,19 @@ const migrations: Record<number, Migration> = {
     ...d,
     paths: Array.isArray((d as Loose).paths) ? (d as Loose).paths : [],
   }),
+  // v16：果树系统 —— 为旧存档树木补 fruit 字段
+  16: (d) => {
+    const trees = Array.isArray((d as Loose).trees) ? (d as Loose).trees as Loose[] : [];
+    return {
+      ...d,
+      trees: trees.map((t: Loose) => ({
+        ...t,
+        fruit: (t as { fruit?: string }).fruit ?? null,
+        fruitCount: (t as { fruitCount?: number }).fruitCount ?? 0,
+        fruitReadyAt: (t as { fruitReadyAt?: number }).fruitReadyAt ?? null,
+      })),
+    };
+  },
 };
 
 function isWeather(value: unknown): value is WeatherPattern {

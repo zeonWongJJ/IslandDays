@@ -90,6 +90,7 @@ interface GameState extends SaveData {
   equipTool: (t: ToolId | null) => void;
   upgradeTool: (toolId: ToolId) => void;
   chopTree: (treeId: string) => boolean;
+  harvestFruit: (treeId: string) => void;
   pickupDrop: (dropId: string) => void;
   regrowDue: () => void;
   tickClock: () => void;
@@ -377,6 +378,22 @@ export const useGameStore = create<GameState>()(
         return true;
       },
 
+      harvestFruit: (treeId) => {
+        const s = get();
+        const tree = s.trees.find((t) => t.id === treeId);
+        if (!tree || !tree.fruit || tree.fruitCount <= 0) return;
+        const fruitId = tree.fruit;
+        const amount = tree.fruitCount;
+        get().addItem(fruitId, amount);
+        const fruitReadyAt = s.clock.day * CLOCK.minutesPerDay + s.clock.minutes + 1440; // 1 game day
+        set({
+          trees: s.trees.map((t) =>
+            t.id === treeId ? { ...t, fruitCount: 0, fruitReadyAt } : t,
+          ),
+        });
+        get().pushToast(`摘了 ${amount} 个${ITEMS[fruitId].name}！`);
+      },
+
       pickupDrop: (dropId) => {
         const s = get();
         const drop = s.drops.find((d) => d.id === dropId);
@@ -395,13 +412,19 @@ export const useGameStore = create<GameState>()(
         const s = get();
         const now = s.clock.day * CLOCK.minutesPerDay + s.clock.minutes;
         const anyDue = s.trees.some((t) => t.state === 'stump' && t.regrowAt !== null && t.regrowAt <= now);
-        if (!anyDue) return;
+        const anyFruitDue = s.trees.some((t) => t.state === 'intact' && t.fruit && t.fruitCount === 0 && t.fruitReadyAt !== null && t.fruitReadyAt <= now);
+        if (!anyDue && !anyFruitDue) return;
         set({
-          trees: s.trees.map((t) =>
-            t.state === 'stump' && t.regrowAt !== null && t.regrowAt <= now
-              ? { ...t, state: 'intact', hp: TREE.maxHp, regrowAt: null }
-              : t,
-          ),
+          trees: s.trees.map((t) => {
+            if (t.state === 'stump' && t.regrowAt !== null && t.regrowAt <= now) {
+              return { ...t, state: 'intact', hp: TREE.maxHp, regrowAt: null };
+            }
+            if (t.state === 'intact' && t.fruit && t.fruitCount === 0 && t.fruitReadyAt !== null && t.fruitReadyAt <= now) {
+              const newCount = Math.floor(Math.random() * 3) + 1;
+              return { ...t, fruitCount: newCount, fruitReadyAt: null };
+            }
+            return t;
+          }),
         });
       },
 
