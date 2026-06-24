@@ -140,6 +140,8 @@ export function Tree({ data }: { data: TreeData }) {
   }
 
   const kenneyScale = 2.9 + (data.variant % 4) * 0.14;
+  const isPalm = data.variant >= 9;
+  const palmScale = isPalm ? kenneyScale * 0.85 : kenneyScale;
 
   return (
     <group position={[x, y, z]}>
@@ -161,13 +163,29 @@ export function Tree({ data }: { data: TreeData }) {
       ))}
       <group ref={wholeRef}>
         <group ref={crownRef}>
-          <group scale={[kenneyScale, kenneyScale, kenneyScale]}>
+          <group scale={[palmScale, palmScale, palmScale]}>
             <KenneyTree variant={data.variant} opacity={crownOpacity} />
           </group>
           <mesh position={[0, 0.14, 0]} castShadow>
             <cylinderGeometry args={[0.34, 0.52, 0.28, 8]} />
             <meshStandardMaterial color="#604328" flatShading roughness={1} />
           </mesh>
+          {isPalm && (() => {
+            const positions: [number, number, number][] = [];
+            let seed = data.variant * 9301 + Math.floor(x * 17) + Math.floor(z * 31);
+            const rng = () => { seed = (seed * 1664525 + 1013904223) >>> 0; return (seed >>> 0) / 4294967295; };
+            for (let i = 0; i < 4; i++) {
+              const a = rng() * Math.PI * 2;
+              const r = 0.3 + rng() * 0.35;
+              positions.push([Math.cos(a) * r, 0.6 + rng() * 0.25, Math.sin(a) * r]);
+            }
+            return positions.map((p, i) => (
+              <mesh key={i} position={p} castShadow>
+                <sphereGeometry args={[0.1, 6, 6]} />
+                <meshStandardMaterial color={i % 2 === 0 ? '#7a5a2a' : '#5a8a3a'} flatShading roughness={0.9} />
+              </mesh>
+            ));
+          })()}
         </group>
       </group>
     </group>
