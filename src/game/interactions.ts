@@ -146,12 +146,13 @@ export function findInteractionTarget({
   const waterDirs = [
     [1, 0], [-1, 0], [0, 1], [0, -1],
     [1, 1], [-1, 1], [1, -1], [-1, -1],
+    [2, 0], [-2, 0], [0, 2], [0, -2],
   ];
   for (const [dx, dz] of waterDirs) {
-    const checkX = playerX + dx * 2;
-    const checkZ = playerZ + dz * 2;
+    const checkX = playerX + dx;
+    const checkZ = playerZ + dz;
     if (groundKind(checkX, checkZ) === 'water') {
-      const dist = Math.hypot(dx * 2, dz * 2);
+      const dist = Math.hypot(dx, dz);
       targets.push({ kind: 'water', dist });
       break;
     }
