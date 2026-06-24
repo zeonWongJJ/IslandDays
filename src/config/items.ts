@@ -51,6 +51,19 @@ export type ItemId =
   | 'shell'
   | 'starfish'
   | 'sea_urchin'
+  // 服装
+  | 'hat_red'
+  | 'hat_blue'
+  | 'hat_green'
+  | 'shirt_red'
+  | 'shirt_blue'
+  | 'shirt_green'
+  | 'pants_blue'
+  | 'pants_brown'
+  | 'pants_green'
+  | 'shoes_red'
+  | 'shoes_blue'
+  | 'shoes_brown'
   // 道路
   | 'path_stone'
   | 'path_brick'
@@ -170,6 +183,19 @@ export const ITEMS: Record<ItemId, ItemDef> = {
   shell: { id: 'shell', name: '贝壳', sellPrice: 60, buyPrice: 0, stack: 30, stackable: true, rarity: 'common' },
   starfish: { id: 'starfish', name: '海星', sellPrice: 100, buyPrice: 0, stack: 30, stackable: true, rarity: 'common' },
   sea_urchin: { id: 'sea_urchin', name: '海胆', sellPrice: 180, buyPrice: 0, stack: 20, stackable: true, rarity: 'rare' },
+  // 服装
+  hat_red: { id: 'hat_red', name: '红帽子', sellPrice: 100, buyPrice: 500, stack: 1, stackable: false, rarity: 'common' },
+  hat_blue: { id: 'hat_blue', name: '蓝帽子', sellPrice: 100, buyPrice: 500, stack: 1, stackable: false, rarity: 'common' },
+  hat_green: { id: 'hat_green', name: '绿帽子', sellPrice: 100, buyPrice: 500, stack: 1, stackable: false, rarity: 'common' },
+  shirt_red: { id: 'shirt_red', name: '红上衣', sellPrice: 150, buyPrice: 750, stack: 1, stackable: false, rarity: 'common' },
+  shirt_blue: { id: 'shirt_blue', name: '蓝上衣', sellPrice: 150, buyPrice: 750, stack: 1, stackable: false, rarity: 'common' },
+  shirt_green: { id: 'shirt_green', name: '绿上衣', sellPrice: 150, buyPrice: 750, stack: 1, stackable: false, rarity: 'common' },
+  pants_blue: { id: 'pants_blue', name: '蓝裤子', sellPrice: 120, buyPrice: 600, stack: 1, stackable: false, rarity: 'common' },
+  pants_brown: { id: 'pants_brown', name: '棕裤子', sellPrice: 120, buyPrice: 600, stack: 1, stackable: false, rarity: 'common' },
+  pants_green: { id: 'pants_green', name: '绿裤子', sellPrice: 120, buyPrice: 600, stack: 1, stackable: false, rarity: 'common' },
+  shoes_red: { id: 'shoes_red', name: '红鞋子', sellPrice: 80, buyPrice: 400, stack: 1, stackable: false, rarity: 'common' },
+  shoes_blue: { id: 'shoes_blue', name: '蓝鞋子', sellPrice: 80, buyPrice: 400, stack: 1, stackable: false, rarity: 'common' },
+  shoes_brown: { id: 'shoes_brown', name: '棕鞋子', sellPrice: 80, buyPrice: 400, stack: 1, stackable: false, rarity: 'common' },
   path_stone: { id: 'path_stone', name: '石砖路', sellPrice: 5, buyPrice: 100, stack: 99, stackable: true, rarity: 'common' },
   path_brick: { id: 'path_brick', name: '砖块路', sellPrice: 5, buyPrice: 120, stack: 99, stackable: true, rarity: 'common' },
   path_wood: { id: 'path_wood', name: '木板路', sellPrice: 5, buyPrice: 150, stack: 99, stackable: true, rarity: 'common' },

@@ -145,6 +145,13 @@ export interface SaveData {
   swimming: boolean;
   /** NPC 任务 */
   quests: import('./quest.ts').Quest[];
+  /** 玩家服装 */
+  clothing: {
+    hat: import('../config/items.ts').ItemId | null;
+    shirt: import('../config/items.ts').ItemId | null;
+    pants: import('../config/items.ts').ItemId | null;
+    shoes: import('../config/items.ts').ItemId | null;
+  };
 }
 
 export function realClockNow(): { day: number; minutes: number } {
@@ -281,6 +288,11 @@ const migrations: Record<number, Migration> = {
     ...d,
     quests: Array.isArray((d as Loose).quests) ? (d as Loose).quests : [],
   }),
+  // v20：换装系统
+  20: (d) => ({
+    ...d,
+    clothing: (d as Loose).clothing ?? { hat: null, shirt: null, pants: null, shoes: null },
+  }),
 };
 
 function isWeather(value: unknown): value is WeatherPattern {
@@ -332,6 +344,7 @@ export function defaultSave(): SaveData {
     turnipMarket: null,
     swimming: false,
     quests: [],
+    clothing: { hat: null, shirt: null, pants: null, shoes: null },
   };
 }
 

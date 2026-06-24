@@ -144,6 +144,10 @@ interface GameState extends SaveData {
   /** 领取任务奖励 */
   claimQuestReward: (questId: string) => void;
 
+  // 换装
+  /** 穿戴服装 */
+  equipClothing: (slot: 'hat' | 'shirt' | 'pants' | 'shoes', itemId: ItemId | null) => void;
+
   // 钓鱼
   /** 开始一次钓鱼（抛竿）。由 Player 在按 E 时调用。 */
   startFishing: (spotId: string) => void;
@@ -535,6 +539,7 @@ export const useGameStore = create<GameState>()(
           booted: true,
           swimming: false,
           quests: [],
+          clothing: { hat: null, shirt: null, pants: null, shoes: null },
         });
       },
 
@@ -742,6 +747,27 @@ export const useGameStore = create<GameState>()(
           quests: s.quests.map((q) => q.id === questId ? { ...q, claimed: true } : q),
         });
         get().pushToast(`领取奖励：${quest.rewardBells} 铃钱`);
+      },
+
+      // ───────── 换装 ─────────
+      equipClothing: (slot, itemId) => {
+        const s = get();
+        if (itemId) {
+          // 检查是否拥有该物品
+          const have = s.inventory[itemId] ?? 0;
+          if (have <= 0) {
+            get().pushToast('没有这件衣服');
+            return;
+          }
+        }
+        set({
+          clothing: { ...s.clothing, [slot]: itemId },
+        });
+        if (itemId) {
+          get().pushToast(`穿上了${ITEMS[itemId].name}`);
+        } else {
+          get().pushToast('脱下了衣服');
+        }
       },
 
       // ───────── 钓鱼 ─────────
@@ -1429,6 +1455,7 @@ export const useGameStore = create<GameState>()(
         turnipMarket: s.turnipMarket,
         swimming: s.swimming,
         quests: s.quests,
+        clothing: s.clothing,
       }),
       migrate: migrateSave,
       merge: (persisted, current) => {

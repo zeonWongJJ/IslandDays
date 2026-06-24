@@ -193,6 +193,6 @@ export const MUSEUM = {
 export const SAVE = {
   // localStorage key。改 schema 时升 version 并在 save.ts 写迁移。
   key: 'ac-save-v1',
-  // 存档版本号，与 SaveData.version 对应。v19 添加 NPC 任务系统。
-  version: 19 as const,
+  // 存档版本号，与 SaveData.version 对应。v20 添加换装系统。
+  version: 20 as const,
 } as const;

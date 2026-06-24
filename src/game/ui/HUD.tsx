@@ -41,6 +41,7 @@ export function HUD() {
       turnipMarket: null,
       swimming: false,
       quests: [],
+      clothing: { hat: null, shirt: null, pants: null, shoes: null },
     });
   }, [trees, plants, paths, house, museumDonations, collection]);
 
