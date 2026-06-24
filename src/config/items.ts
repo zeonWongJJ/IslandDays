@@ -47,6 +47,10 @@ export type ItemId =
   | 'cherry_sapling'
   // 大头菜
   | 'turnip'
+  // 海洋收集品
+  | 'shell'
+  | 'starfish'
+  | 'sea_urchin'
   // 道路
   | 'path_stone'
   | 'path_brick'
@@ -162,6 +166,10 @@ export const ITEMS: Record<ItemId, ItemDef> = {
   cherry_sapling: { id: 'cherry_sapling', name: '樱桃树苗', sellPrice: 60, buyPrice: 600, stack: 10, stackable: true, rarity: 'rare' },
   // 大头菜
   turnip: { id: 'turnip', name: '大头菜', sellPrice: 0, buyPrice: 90, stack: 99, stackable: true, rarity: 'common' },
+  // 海洋收集品
+  shell: { id: 'shell', name: '贝壳', sellPrice: 60, buyPrice: 0, stack: 30, stackable: true, rarity: 'common' },
+  starfish: { id: 'starfish', name: '海星', sellPrice: 100, buyPrice: 0, stack: 30, stackable: true, rarity: 'common' },
+  sea_urchin: { id: 'sea_urchin', name: '海胆', sellPrice: 180, buyPrice: 0, stack: 20, stackable: true, rarity: 'rare' },
   path_stone: { id: 'path_stone', name: '石砖路', sellPrice: 5, buyPrice: 100, stack: 99, stackable: true, rarity: 'common' },
   path_brick: { id: 'path_brick', name: '砖块路', sellPrice: 5, buyPrice: 120, stack: 99, stackable: true, rarity: 'common' },
   path_wood: { id: 'path_wood', name: '木板路', sellPrice: 5, buyPrice: 150, stack: 99, stackable: true, rarity: 'common' },

@@ -141,6 +141,8 @@ export interface SaveData {
   };
   /** 大头菜市场 */
   turnipMarket: import('./turnipMarket.ts').TurnipMarket | null;
+  /** 游泳状态 */
+  swimming: boolean;
 }
 
 export function realClockNow(): { day: number; minutes: number } {
@@ -267,6 +269,11 @@ const migrations: Record<number, Migration> = {
     ...d,
     turnipMarket: (d as Loose).turnipMarket ?? null,
   }),
+  // v18：游泳系统
+  18: (d) => ({
+    ...d,
+    swimming: (d as Loose).swimming ?? false,
+  }),
 };
 
 function isWeather(value: unknown): value is WeatherPattern {
@@ -316,6 +323,7 @@ export function defaultSave(): SaveData {
       volleyballDay: null,
     },
     turnipMarket: null,
+    swimming: false,
   };
 }
 

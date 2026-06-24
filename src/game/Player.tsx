@@ -89,6 +89,9 @@ export function Player() {
   const mineRock = useGameStore((s) => s.mineRock);
   const placePath = useGameStore((s) => s.placePath);
   const removePath = useGameStore((s) => s.removePath);
+  const swimming = useGameStore((s) => s.swimming);
+  const startSwimming = useGameStore((s) => s.startSwimming);
+  const stopSwimming = useGameStore((s) => s.stopSwimming);
 
   // 同步 playerRef 供相机/其它组件读取
   useEffect(() => {
@@ -520,6 +523,13 @@ export function Player() {
             }
             else if (target.kind === 'path') {
               removePath(target.id);
+            }
+            else if (target.kind === 'water') {
+              if (swimming) {
+                stopSwimming();
+              } else {
+                startSwimming();
+              }
             }
             else {
               if (target.dist > BUG.catchRadius) {

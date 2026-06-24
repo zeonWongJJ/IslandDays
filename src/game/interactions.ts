@@ -9,6 +9,7 @@ import { ITEMS } from '../config/items.ts';
 import type { BugSpot, FishSpot, RockSpot, TreeData, PlantSpot, PathTile } from '../systems/save.ts';
 import { MUSEUM } from '../config/constants.ts';
 import { WORLD_FEATURES, type WorldFeatureId } from '../config/worldFeatures.ts';
+import { groundKind } from '../systems/terrain.ts';
 
 export type InteractionTarget =
   | { kind: 'shop'; dist: number }
@@ -22,7 +23,8 @@ export type InteractionTarget =
   | { kind: 'plant'; id: string; dist: number; spot: PlantSpot }
   | { kind: 'rock'; id: string; dist: number }
   | { kind: 'feature'; id: WorldFeatureId; dist: number }
-  | { kind: 'path'; id: string; dist: number; tile: PathTile };
+  | { kind: 'path'; id: string; dist: number; tile: PathTile }
+  | { kind: 'water'; dist: number };
 
 interface FindInteractionTargetArgs {
   playerX: number;
@@ -49,6 +51,7 @@ const PRIORITY: Record<InteractionTarget['kind'], number> = {
   path: 57,
   plant: 55,
   tree: 50,
+  water: 40,
 };
 
 export function findInteractionTarget({
@@ -139,6 +142,21 @@ export function findInteractionTarget({
     if (dist <= MINE.interactRadius) targets.push({ kind: 'rock', id: r.id, dist });
   }
 
+  // 检测附近水域（用于游泳）
+  const waterDirs = [
+    [1, 0], [-1, 0], [0, 1], [0, -1],
+    [1, 1], [-1, 1], [1, -1], [-1, -1],
+  ];
+  for (const [dx, dz] of waterDirs) {
+    const checkX = playerX + dx * 2;
+    const checkZ = playerZ + dz * 2;
+    if (groundKind(checkX, checkZ) === 'water') {
+      const dist = Math.hypot(dx * 2, dz * 2);
+      targets.push({ kind: 'water', dist });
+      break;
+    }
+  }
+
   targets.sort((a, b) => PRIORITY[b.kind] - PRIORITY[a.kind] || a.dist - b.dist);
   return targets[0] ?? null;
 }
@@ -168,6 +186,7 @@ export function interactionHint(target: InteractionTarget, equipped: ToolId | nu
   }
   if (target.kind === 'rock') return equipped === 'shovel' ? '按 E 采矿' : '需要装备铲子才能采矿（按 4）';
   if (target.kind === 'path') return '按 E 拆除道路';
+  if (target.kind === 'water') return '按 E 进入游泳';
   if (target.kind === 'tree') {
     if (target.hasFruit) return `按 E 摘${target.fruitName ?? '果实'}`;
     return equipped === 'axe' ? '按 E 砍树' : '装备斧头才能砍树（按 1）';

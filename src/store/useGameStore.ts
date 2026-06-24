@@ -129,6 +129,12 @@ interface GameState extends SaveData {
   /** 检查大头菜是否过期 */
   checkTurnipSpoil: () => void;
 
+  // 游泳
+  /** 进入游泳模式 */
+  startSwimming: () => void;
+  /** 离开游泳模式 */
+  stopSwimming: () => void;
+
   // 钓鱼
   /** 开始一次钓鱼（抛竿）。由 Player 在按 E 时调用。 */
   startFishing: (spotId: string) => void;
@@ -508,6 +514,7 @@ export const useGameStore = create<GameState>()(
           dialogue: null,
           museumPanel: false,
           booted: true,
+          swimming: false,
         });
       },
 
@@ -666,6 +673,21 @@ export const useGameStore = create<GameState>()(
         } else {
           set({ turnipMarket: null });
         }
+      },
+
+      // ───────── 游泳 ─────────
+      startSwimming: () => {
+        const s = get();
+        if (s.swimming) return;
+        set({ swimming: true });
+        get().pushToast('进入游泳模式');
+      },
+
+      stopSwimming: () => {
+        const s = get();
+        if (!s.swimming) return;
+        set({ swimming: false });
+        get().pushToast('离开游泳模式');
       },
 
       // ───────── 钓鱼 ─────────
@@ -1351,6 +1373,7 @@ export const useGameStore = create<GameState>()(
         museumRewardClaimed: s.museumRewardClaimed,
         regionProgress: s.regionProgress,
         turnipMarket: s.turnipMarket,
+        swimming: s.swimming,
       }),
       migrate: migrateSave,
       merge: (persisted, current) => {
