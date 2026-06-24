@@ -14,19 +14,19 @@ export function PostProcessing() {
         luminanceSmoothing={0.9}
         mipmapBlur
       />
-      <Vignette
-        offset={0.35}
-        darkness={0.45}
-        blendFunction={BlendFunction.NORMAL}
-      />
       <HueSaturation
-        hue={0}
-        saturation={0.08}
+        hue={0.02}
+        saturation={0.25}
         blendFunction={BlendFunction.NORMAL}
       />
       <BrightnessContrast
-        brightness={0.02}
-        contrast={0.06}
+        brightness={0.04}
+        contrast={0.12}
+        blendFunction={BlendFunction.NORMAL}
+      />
+      <Vignette
+        offset={0.35}
+        darkness={0.4}
         blendFunction={BlendFunction.NORMAL}
       />
     </EffectComposer>
