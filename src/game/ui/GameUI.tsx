@@ -53,6 +53,7 @@ const ICON: Record<ItemId, string> = {
   orange_sapling: '🌱',
   peach_sapling: '🌱',
   cherry_sapling: '🌱',
+  turnip: '🥬',
   path_stone: '⬜',
   path_brick: '🟥',
   path_wood: '🟫',

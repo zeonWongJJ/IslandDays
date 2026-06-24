@@ -139,6 +139,8 @@ export interface SaveData {
     collectedShells: Record<string, true>;
     volleyballDay: number | null;
   };
+  /** 大头菜市场 */
+  turnipMarket: import('./turnipMarket.ts').TurnipMarket | null;
 }
 
 export function realClockNow(): { day: number; minutes: number } {
@@ -260,6 +262,11 @@ const migrations: Record<number, Migration> = {
       })),
     };
   },
+  // v17：大头菜市场
+  17: (d) => ({
+    ...d,
+    turnipMarket: (d as Loose).turnipMarket ?? null,
+  }),
 };
 
 function isWeather(value: unknown): value is WeatherPattern {
@@ -308,6 +315,7 @@ export function defaultSave(): SaveData {
       collectedShells: {},
       volleyballDay: null,
     },
+    turnipMarket: null,
   };
 }
 

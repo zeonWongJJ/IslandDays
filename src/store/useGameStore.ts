@@ -35,6 +35,18 @@ import { animalById, type AnimalId } from '../config/animals.ts';
 import { blocksWalking, groundKind, nearestWalkable } from '../systems/terrain.ts';
 import { currentEvent } from '../config/events.ts';
 import type { WorldFeatureId } from '../config/worldFeatures.ts';
+import { createTurnipMarket } from '../systems/turnipMarket.ts';
+
+// xorshift32 —— 简单确定性随机，避免引入额外依赖。
+function makeRng(seed: number) {
+  let s = seed >>> 0 || 1;
+  return () => {
+    s ^= s << 13;
+    s ^= s >>> 17;
+    s ^= s << 5;
+    return ((s >>> 0) % 1_000_000) / 1_000_000;
+  };
+}
 
 interface Toast {
   id: number;
@@ -106,6 +118,16 @@ interface GameState extends SaveData {
   sellItem: (id: ItemId, qty: number) => boolean;
   sellAll: () => number;
   setShopOpen: (open: boolean) => void;
+
+  // 大头菜市场
+  /** 购买大头菜 */
+  buyTurnips: (qty: number) => boolean;
+  /** 卖出大头菜 */
+  sellTurnips: (qty: number) => boolean;
+  /** 更新大头菜价格（时钟 tick 时调用） */
+  updateTurnipPrices: () => void;
+  /** 检查大头菜是否过期 */
+  checkTurnipSpoil: () => void;
 
   // 钓鱼
   /** 开始一次钓鱼（抛竿）。由 Player 在按 E 时调用。 */
@@ -440,6 +462,16 @@ export const useGameStore = create<GameState>()(
           ),
         }));
         get().growPlants();
+        get().updateTurnipPrices();
+        get().checkTurnipSpoil();
+        // 周日创建新的大头菜市场
+        const dayOfWeek = nextClock.day % 7;
+        if (dayOfWeek === 0 && nextClock.minutes === 0) {
+          const rng = makeRng(nextClock.day * 1000);
+          const market = createTurnipMarket(nextClock.day, nextClock.minutes, rng);
+          set({ turnipMarket: market });
+          get().pushToast('大头菜市场开门了！周日可以买大头菜');
+        }
       },
 
       setWeather: (weather) => set({ weather }),
@@ -554,6 +586,87 @@ export const useGameStore = create<GameState>()(
       },
 
       setShopOpen: (open) => set({ shopOpen: open }),
+
+      // ───────── 大头菜市场 ─────────
+      buyTurnips: (qty) => {
+        const s = get();
+        const market = s.turnipMarket;
+        if (!market) {
+          get().pushToast('周日才能买大头菜');
+          return false;
+        }
+        const cost = market.buyPrice * qty;
+        if (s.player.bells < cost) {
+          get().pushToast(`铃钱不足（需要 ${cost} 铃）`);
+          return false;
+        }
+        const cur = s.inventory.turnip ?? 0;
+        if (cur + qty > 99) {
+          get().pushToast('大头菜最多只能带 99 个');
+          return false;
+        }
+        set({
+          player: { ...s.player, bells: s.player.bells - cost },
+          inventory: { ...s.inventory, turnip: cur + qty },
+        });
+        get().pushToast(`买了 ${qty} 个大头菜（-${cost}铃钱）`);
+        return true;
+      },
+
+      sellTurnips: (qty) => {
+        const s = get();
+        const market = s.turnipMarket;
+        const cur = s.inventory.turnip ?? 0;
+        if (cur <= 0 || cur < qty) {
+          get().pushToast('没有足够的大头菜');
+          return false;
+        }
+        if (!market) {
+          get().pushToast('大头菜无法出售');
+          return false;
+        }
+        const gain = market.sellPrice * qty;
+        set({
+          player: { ...s.player, bells: s.player.bells + gain },
+          inventory: { ...s.inventory, turnip: cur - qty },
+        });
+        get().pushToast(`卖出大头菜 ×${qty}（+${gain}铃钱）`);
+        return true;
+      },
+
+      updateTurnipPrices: () => {
+        const s = get();
+        const market = s.turnipMarket;
+        if (!market) return;
+        const now = s.clock.day * CLOCK.minutesPerDay + s.clock.minutes;
+        if (now < market.nextPriceChange) return;
+        const rng = makeRng(s.clock.day * 1000 + s.clock.minutes);
+        const newSellPrice = Math.max(10, market.buyPrice + Math.floor((rng() - 0.5) * market.buyPrice * 0.8));
+        const nextPriceChange = market.nextPriceChange + CLOCK.minutesPerDay / 2;
+        set({
+          turnipMarket: { ...market, sellPrice: newSellPrice, nextPriceChange },
+        });
+        get().pushToast(`大头菜价格更新：${newSellPrice} 铃/个`);
+      },
+
+      checkTurnipSpoil: () => {
+        const s = get();
+        const market = s.turnipMarket;
+        if (!market) return;
+        const now = s.clock.day * CLOCK.minutesPerDay + s.clock.minutes;
+        if (now < market.spoilAt) return;
+        // 大头菜过期，清空库存
+        const cur = s.inventory.turnip ?? 0;
+        if (cur > 0) {
+          set({
+            inventory: { ...s.inventory, turnip: 0 },
+            turnipMarket: null,
+          });
+          get().pushToast(`大头菜过期了！${cur} 个大头菜腐烂了`);
+        } else {
+          set({ turnipMarket: null });
+        }
+      },
 
       // ───────── 钓鱼 ─────────
       startFishing: (spotId) => {
@@ -1237,6 +1350,7 @@ export const useGameStore = create<GameState>()(
         museumDonations: s.museumDonations,
         museumRewardClaimed: s.museumRewardClaimed,
         regionProgress: s.regionProgress,
+        turnipMarket: s.turnipMarket,
       }),
       migrate: migrateSave,
       merge: (persisted, current) => {

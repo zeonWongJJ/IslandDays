@@ -47,6 +47,7 @@ const ITEM_COLOR: Record<ItemId, string> = {
   orange_sapling: '#4a8a3a',
   peach_sapling: '#4a8a3a',
   cherry_sapling: '#4a8a3a',
+  turnip: '#e8e8d0',
   path_stone: '#8a8a8a',
   path_brick: '#b84a3a',
   path_wood: '#c0906a',
