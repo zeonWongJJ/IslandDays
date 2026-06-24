@@ -44,6 +44,8 @@ import { ShoreDetail } from './world/ShoreDetail.tsx';
 import { ShoreWaves } from './world/ShoreWaves.tsx';
 import { MapLandmarks } from './world/MapLandmarks.tsx';
 import { RegionalContent } from './world/RegionalContent.tsx';
+import { CloudShadows } from './world/CloudShadows.tsx';
+import { FlyingCritters } from './world/FlyingCritters.tsx';
 import { useGameStore } from '../store/useGameStore.ts';
 import { collectPlacementWarnings } from '../systems/placement.ts';
 import { collectStaticObstacleWarnings } from '../systems/staticObstacles.ts';
@@ -91,6 +93,8 @@ export function Experience() {
             <ShorelineDetails />
             <ShoreDetail />
             <ShoreWaves />
+            <CloudShadows />
+            <FlyingCritters />
             <Decorations />
             <MapLandmarks />
             <RegionalContent />
