@@ -1,0 +1,91 @@
+// 地面掉落物：树枝/木材等。
+// 每个掉落物是一个低多边形小块+阴影，颜色按物品区分。
+// 拾取逻辑在 Player.tsx（靠近自动捡起）。
+
+import { useMemo } from 'react';
+import * as THREE from 'three';
+import { useGameStore } from '../../store/useGameStore.ts';
+import { type ItemId } from '../../config/items.ts';
+import { groundHeight } from '../../systems/terrain.ts';
+import { KenneyDropModel } from './KenneyModels.tsx';
+
+const ITEM_COLOR: Record<ItemId, string> = {
+  branch: '#8a6a3a',
+  wood: '#c89a5a',
+  stone: '#9a9a9a',
+  fish_common: '#7fa8c9',
+  fish_rare: '#e8b84a',
+  fish_legend: '#c9604a',
+  bug_common: '#c9a8d6',
+  bug_rare: '#e8e8a0',
+  sapling: '#4a8a3a',
+  flower_seed: '#d66ba8',
+  iron_ore: '#7a7a8a',
+  gold_ore: '#e8c840',
+  furniture_stool: '#b08a5a',
+  furniture_table: '#a07a4a',
+  furniture_bed: '#c0906a',
+  furniture_lamp: '#e8d860',
+  furniture_rug: '#d6806a',
+  furniture_chair: '#b08a5a',
+  furniture_sofa: '#c06040',
+  furniture_bookcase: '#8a6a3a',
+  furniture_desk: '#a07a4a',
+  furniture_coffeeTable: '#b0906a',
+  furniture_bench: '#c0906a',
+  furniture_sideTable: '#a08a5a',
+  furniture_cabinet: '#7a5a3a',
+  furniture_lampTable: '#e8d860',
+  furniture_rugSquare: '#d6806a',
+  recipe_stool: '#d8c890',
+  recipe_table: '#d8c890',
+  recipe_bed: '#d8c890',
+  recipe_lamp: '#d8c890',
+  recipe_rug: '#d8c890',
+  recipe_chair: '#d8c890',
+  recipe_sofa: '#d8c890',
+  recipe_bookcase: '#d8c890',
+  recipe_desk: '#d8c890',
+  recipe_coffeeTable: '#d8c890',
+  recipe_bench: '#d8c890',
+  recipe_sideTable: '#d8c890',
+  recipe_cabinet: '#d8c890',
+  recipe_lampTable: '#d8c890',
+  recipe_rugSquare: '#d8c890',
+};
+
+export function Drops() {
+  const drops = useGameStore((s) => s.drops);
+  return (
+    <group>
+      {drops.map((d) => (
+        <Drop key={d.id} itemId={d.itemId} pos={d.pos} />
+      ))}
+    </group>
+  );
+}
+
+function Drop({ itemId, pos }: { itemId: ItemId; pos: [number, number, number] }) {
+  const color = ITEM_COLOR[itemId] ?? '#cccccc';
+  const geo = useMemo(() => new THREE.DodecahedronGeometry(0.18, 0), []);
+  const [x, , z] = pos;
+  const y = useMemo(() => groundHeight(x, z), [x, z]);
+  return (
+    <group position={[x, y + 0.2, z]}>
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.18, 0]}>
+        <circleGeometry args={[0.3, 16]} />
+        <meshBasicMaterial color="#000000" transparent opacity={0.2} />
+      </mesh>
+      <KenneyDropModel
+        itemId={itemId}
+        fallback={
+        <mesh geometry={geo} castShadow>
+          <meshStandardMaterial color={color} flatShading roughness={0.9} />
+        </mesh>
+        }
+      />
+      {/* 轻微高亮，提示可拾取 */}
+      <pointLight color={color} intensity={0.12} distance={1.2} position={[0, 0.2, 0]} />
+    </group>
+  );
+}
