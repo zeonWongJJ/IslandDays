@@ -8,14 +8,25 @@ import { KenneyBugModel, KenneyFishModel } from '../world/KenneyModels.tsx';
 const HALF = MUSEUM.interiorSize / 2;
 
 const FISH_ENTRIES = [
-  { id: 'fish_common', label: '鲈鱼', icon: '🐟', color: '#6a9a8a' },
-  { id: 'fish_rare', label: '金鱼', icon: '🐠', color: '#d4a040' },
-  { id: 'fish_legend', label: '鲨鱼', icon: '🦈', color: '#607080' },
+  { id: 'fish_common',   label: '鲈鱼',   icon: '🐟', color: '#6a9a8a' },
+  { id: 'fish_crucian',  label: '鲫鱼',   icon: '🐟', color: '#7ab88a' },
+  { id: 'fish_carp',     label: '鲤鱼',   icon: '🐟', color: '#c9b84a' },
+  { id: 'fish_bluegill', label: '蓝鳃鱼', icon: '🐟', color: '#4a7fc9' },
+  { id: 'fish_loach',    label: '泥鳅',   icon: '🐟', color: '#8a6a40' },
+  { id: 'fish_salmon',   label: '鲑鱼',   icon: '🐟', color: '#c9704a' },
+  { id: 'fish_mackerel', label: '鲭鱼',   icon: '🐟', color: '#4a6a8a' },
+  { id: 'fish_rare',     label: '金鱼',   icon: '🐠', color: '#d4a040' },
+  { id: 'fish_mahi_mahi', label: '鬼头刀', icon: '🐠', color: '#40c0a0' },
+  { id: 'fish_legend',   label: '鲨鱼',   icon: '🦈', color: '#607080' },
 ] as const;
 
 const BUG_ENTRIES = [
-  { id: 'bug_common', label: '蝴蝶', icon: '🦋', color: '#a0c860' },
-  { id: 'bug_rare', label: '萤火虫', icon: '✨', color: '#60a8d0' },
+  { id: 'bug_common',    label: '蝴蝶',   icon: '🦋', color: '#a0c860' },
+  { id: 'bug_cicada',    label: '蝉',     icon: '🦗', color: '#5a7a3a' },
+  { id: 'bug_beetle',    label: '独角仙', icon: '🪲', color: '#3a2a1a' },
+  { id: 'bug_dragonfly', label: '蜻蜓',   icon: '🪰', color: '#6ab0d8' },
+  { id: 'bug_moth',      label: '飞蛾',   icon: '🦋', color: '#8a6a5a' },
+  { id: 'bug_rare',      label: '萤火虫', icon: '✨', color: '#60a8d0' },
 ] as const;
 
 export function MuseumInterior() {

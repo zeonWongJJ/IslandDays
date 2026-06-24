@@ -3,15 +3,48 @@ import { MUSEUM } from '../../config/constants.ts';
 import { ITEMS } from '../../config/items.ts';
 
 const ITEM_ICON: Record<string, string> = {
-  fish_common: '🐟', fish_rare: '🐠', fish_legend: '🦈',
-  bug_common: '🦋', bug_rare: '✨',
+  fish_common: '🐟', fish_crucian: '🐟', fish_carp: '🐟',
+  fish_bluegill: '🐟', fish_loach: '🐟', fish_salmon: '🐟',
+  fish_mackerel: '🐟', fish_rare: '🐠', fish_mahi_mahi: '🐠', fish_legend: '🦈',
+  bug_common: '🦋', bug_cicada: '🦗', bug_beetle: '🐞',
+  bug_dragonfly: '🪰', bug_moth: '🦋', bug_rare: '✨',
 };
 
-export function MuseumUI({ onClose }: { onClose: () => void }) {
+const FISH_IDS = MUSEUM.donateableItems.filter((id) => id.startsWith('fish'));
+const BUG_IDS = MUSEUM.donateableItems.filter((id) => id.startsWith('bug'));
+
+function MuseumGrid({ ids }: { ids: readonly string[] }) {
   const inventory = useGameStore((s) => s.inventory);
   const donations = useGameStore((s) => s.museumDonations);
-  const claimed = useGameStore((s) => s.museumRewardClaimed);
   const donateToMuseum = useGameStore((s) => s.donateToMuseum);
+  return (
+    <div className="museum-grid">
+      {ids.map((id) => {
+        const donated = !!donations[id];
+        const have = (inventory[id as keyof typeof inventory] ?? 0) > 0;
+        const def = ITEMS[id as keyof typeof ITEMS];
+        return (
+          <div key={id} className={`museum-card ${donated ? 'donated' : ''}`}>
+            <div className="museum-card-icon">{donated ? ITEM_ICON[id] : '❓'}</div>
+            <div className="museum-card-name">{donated ? def?.name ?? id : '???'}</div>
+            <div className="museum-card-status">
+              {donated ? '✅ 已捐赠' : have ? `背包有 ${inventory[id as keyof typeof inventory]} 个` : '未捕获'}
+            </div>
+            {!donated && have && (
+              <button className="museum-donate-btn" onClick={() => donateToMuseum(id)}>
+                捐赠
+              </button>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+export function MuseumUI({ onClose }: { onClose: () => void }) {
+  const donations = useGameStore((s) => s.museumDonations);
+  const claimed = useGameStore((s) => s.museumRewardClaimed);
   const claimMuseumReward = useGameStore((s) => s.claimMuseumReward);
 
   const total = MUSEUM.donateableItems.length;
@@ -33,52 +66,11 @@ export function MuseumUI({ onClose }: { onClose: () => void }) {
       </div>
 
       {/* 鱼类区 */}
-      <div className="museum-section-title">🐟 鱼类展区</div>
-      <div className="museum-grid">
-        {['fish_common', 'fish_rare', 'fish_legend'].map((id) => {
-          const donated = !!donations[id];
-          const have = (inventory[id as keyof typeof inventory] ?? 0) > 0;
-          const def = ITEMS[id as keyof typeof ITEMS];
-          return (
-            <div key={id} className={`museum-card ${donated ? 'donated' : ''}`}>
-              <div className="museum-card-icon">{donated ? ITEM_ICON[id] : '❓'}</div>
-              <div className="museum-card-name">{donated ? def?.name ?? id : '???'}</div>
-              <div className="museum-card-status">
-                {donated ? '✅ 已捐赠' : have ? `背包有 ${inventory[id as keyof typeof inventory]} 个` : '未捕获'}
-              </div>
-              {!donated && have && (
-                <button className="museum-donate-btn" onClick={() => donateToMuseum(id)}>
-                  捐赠
-                </button>
-              )}
-            </div>
-          );
-        })}
-      </div>
-
+      <div className="museum-section-title">🐟 鱼类展区（{FISH_IDS.length} 种）</div>
+      <MuseumGrid ids={FISH_IDS} />
       {/* 昆虫区 */}
-      <div className="museum-section-title">🦋 昆虫展区</div>
-      <div className="museum-grid">
-        {['bug_common', 'bug_rare'].map((id) => {
-          const donated = !!donations[id];
-          const have = (inventory[id as keyof typeof inventory] ?? 0) > 0;
-          const def = ITEMS[id as keyof typeof ITEMS];
-          return (
-            <div key={id} className={`museum-card ${donated ? 'donated' : ''}`}>
-              <div className="museum-card-icon">{donated ? ITEM_ICON[id] : '❓'}</div>
-              <div className="museum-card-name">{donated ? def?.name ?? id : '???'}</div>
-              <div className="museum-card-status">
-                {donated ? '✅ 已捐赠' : have ? `背包有 ${inventory[id as keyof typeof inventory]} 个` : '未捕获'}
-              </div>
-              {!donated && have && (
-                <button className="museum-donate-btn" onClick={() => donateToMuseum(id)}>
-                  捐赠
-                </button>
-              )}
-            </div>
-          );
-        })}
-      </div>
+      <div className="museum-section-title">🦋 昆虫展区（{BUG_IDS.length} 种）</div>
+      <MuseumGrid ids={BUG_IDS} />
 
       {/* 奖励区 */}
       <div className="museum-reward-section">

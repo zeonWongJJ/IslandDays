@@ -4,13 +4,24 @@ import { useGameStore } from '../../store/useGameStore.ts';
 interface Entry { id: string; name: string; icon: string }
 
 const FISH_ENTRIES: Entry[] = [
-  { id: 'fish_common', name: '鲈鱼', icon: '🐟' },
-  { id: 'fish_rare', name: '金鱼', icon: '🐠' },
-  { id: 'fish_legend', name: '鲨鱼', icon: '🦈' },
+  { id: 'fish_common',   name: '鲈鱼',   icon: '🐟' },
+  { id: 'fish_crucian',  name: '鲫鱼',   icon: '🐟' },
+  { id: 'fish_carp',     name: '鲤鱼',   icon: '🐟' },
+  { id: 'fish_bluegill', name: '蓝鳃鱼', icon: '🐟' },
+  { id: 'fish_loach',    name: '泥鳅',   icon: '🐟' },
+  { id: 'fish_salmon',   name: '鲑鱼',   icon: '🐟' },
+  { id: 'fish_mackerel', name: '鲭鱼',   icon: '🐟' },
+  { id: 'fish_rare',     name: '金鱼',   icon: '🐠' },
+  { id: 'fish_mahi_mahi', name: '鬼头刀', icon: '🐠' },
+  { id: 'fish_legend',   name: '鲨鱼',   icon: '🦈' },
 ];
 const BUG_ENTRIES: Entry[] = [
-  { id: 'bug_common', name: '蝴蝶', icon: '🦋' },
-  { id: 'bug_rare', name: '萤火虫', icon: '✨' },
+  { id: 'bug_common',    name: '蝴蝶',   icon: '🦋' },
+  { id: 'bug_cicada',    name: '蝉',     icon: '🦗' },
+  { id: 'bug_beetle',    name: '独角仙', icon: '🐞' },
+  { id: 'bug_dragonfly', name: '蜻蜓',   icon: '🪰' },
+  { id: 'bug_moth',      name: '飞蛾',   icon: '🦋' },
+  { id: 'bug_rare',      name: '萤火虫', icon: '✨' },
 ];
 
 export function CollectionPanel({ onClose }: { onClose: () => void }) {
@@ -18,8 +29,11 @@ export function CollectionPanel({ onClose }: { onClose: () => void }) {
   const [tab, setTab] = useState<'fish' | 'bug'>('fish');
 
   const entries = tab === 'fish' ? FISH_ENTRIES : BUG_ENTRIES;
+  const otherEntries = tab === 'fish' ? BUG_ENTRIES : FISH_ENTRIES;
   const caught = entries.filter((e) => collection[e.id]);
+  const otherCaught = otherEntries.filter((e) => collection[e.id]);
   const total = entries.length;
+  const otherTotal = otherEntries.length;
 
   return (
     <div className="collection-panel">
@@ -29,10 +43,14 @@ export function CollectionPanel({ onClose }: { onClose: () => void }) {
       </div>
       <div className="collection-tabs">
         <button className={tab === 'fish' ? 'active' : ''} onClick={() => setTab('fish')}>
-          🐟 鱼类 <span className="collection-count">{caught.length}/{total}</span>
+          🐟 鱼类 <span className="collection-count">
+            {tab === 'fish' ? caught.length : otherCaught.length}/{tab === 'fish' ? total : otherTotal}
+          </span>
         </button>
         <button className={tab === 'bug' ? 'active' : ''} onClick={() => setTab('bug')}>
-          🦋 虫类 <span className="collection-count">{(tab === 'bug' ? BUG_ENTRIES : []).length}/{total}</span>
+          🦋 虫类 <span className="collection-count">
+            {tab === 'bug' ? caught.length : otherCaught.length}/{tab === 'bug' ? total : otherTotal}
+          </span>
         </button>
       </div>
       <div className="collection-grid">

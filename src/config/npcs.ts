@@ -20,21 +20,27 @@ export interface NpcDef {
   recipeUnlock: { threshold: number; recipe: ItemId } | null;
 }
 
-const LIKES_MIRA: ItemId[] = ['flower_seed', 'bug_common'];
-const LIKES_TAO: ItemId[] = ['fish_common', 'fish_rare'];
-const LIKES_LINA: ItemId[] = ['wood', 'sapling'];
+const LIKES_MIRA: ItemId[] = ['flower_seed', 'bug_common', 'bug_dragonfly', 'sapling'];
+const LIKES_TAO: ItemId[] = ['fish_common', 'fish_rare', 'fish_salmon', 'fish_mahi_mahi'];
+const LIKES_LINA: ItemId[] = ['wood', 'sapling', 'fish_crucian', 'bug_beetle'];
 
 const giftResp = (item: string) => [
   `${item}！米拉开心地收下了，闻了闻说「好香啊」。`,
   `米拉接过${item}，眼睛亮了起来。「太谢谢了！」`,
+  `「哇，是${item}！」米拉高兴地转了个圈。`,
+  `米拉小心翼翼地把${item}收好，「我会好好珍惜的！」`,
 ];
 const giftRespTao = (item: string) => [
   `${item}！阿陶仔细端详了一番，「这东西不错，我很喜欢。」`,
   `阿陶收下${item}，高兴地说「改天一起钓鱼啊！」`,
+  `「哦！${item}！」阿陶推了推帽子，满意地点头。`,
+  `阿陶接过${item}，笑着说「你真有眼光！」`,
 ];
 const giftRespLina = (item: string) => [
   `${item}！莉娜点点头，「正好我需要这个，谢啦。」`,
   `莉娜接过${item}，露出了满意的微笑。`,
+  `「${item}啊，做工不错。」莉娜仔细看了看收进口袋。`,
+  `莉娜收下${item}，轻声说「有心了，谢谢。」`,
 ];
 
 export const NPCS: NpcDef[] = [
@@ -48,7 +54,14 @@ export const NPCS: NpcDef[] = [
     homePos: npcLayout('mira').homePos,
     hangoutPos: npcLayout('mira').hangoutPos,
     eveningPos: npcLayout('mira').eveningPos,
-    greetings: ['今天河边的花开得很好，记得慢慢逛。', '如果你捡到多余木材，可以试着做些家具。'],
+    greetings: [
+      '今天河边的花开得很好，记得慢慢逛。',
+      '如果你捡到多余木材，可以试着做些家具。',
+      '早啊！今天的阳光真舒服，适合在岛上散步。',
+      '我刚在那边看到一只漂亮的蝴蝶，你有捕虫网吗？',
+      '你知道吗，不同的花种在一起会特别好看。',
+      '天色不早了，记得把今天捡到的东西整理一下。',
+    ],
     likes: LIKES_MIRA,
     giftResponses: giftResp('花'),
     recipeUnlock: { threshold: 30, recipe: 'recipe_stool' },
@@ -63,7 +76,14 @@ export const NPCS: NpcDef[] = [
     homePos: npcLayout('tao').homePos,
     hangoutPos: npcLayout('tao').hangoutPos,
     eveningPos: npcLayout('tao').eveningPos,
-    greetings: ['河流也会有好鱼，只是现在还得先把鱼种系统补起来。', '钓鱼要等鱼漂猛沉，太早拉杆就空了。'],
+    greetings: [
+      '河流也会有好鱼，只是现在还得先把鱼种系统补起来。',
+      '钓鱼要等鱼漂猛沉，太早拉杆就空了。',
+      '哟，今天来钓鱼吗？我推荐去桥那边试试。',
+      '你听说过鬼头刀吗？那可是传说中的鱼！',
+      '清晨和黄昏是最佳钓鱼时间，别睡过头了。',
+      '钓上来的鱼记得拿去卖，攒够了钱可以升级工具。',
+    ],
     likes: LIKES_TAO,
     giftResponses: giftRespTao('鱼'),
     recipeUnlock: { threshold: 30, recipe: 'recipe_table' },
@@ -78,7 +98,14 @@ export const NPCS: NpcDef[] = [
     homePos: npcLayout('lina').homePos,
     hangoutPos: npcLayout('lina').hangoutPos,
     eveningPos: npcLayout('lina').eveningPos,
-    greetings: ['你的屋子还可以再布置得暖一点。', '以后可以给每个居民加任务和好感礼物。'],
+    greetings: [
+      '你的屋子还可以再布置得暖一点。',
+      '以后可以给每个居民加任务和好感礼物。',
+      '需要木材的话可以去砍树，但别砍太多哦。',
+      '我刚修好了一张长凳，摆在广场那边了。',
+      '家具摆放的时候注意留点走路的空间。',
+      '你看这个岛的布局，我觉得还有改造的余地。',
+    ],
     likes: LIKES_LINA,
     giftResponses: giftRespLina('木材'),
     recipeUnlock: { threshold: 30, recipe: 'recipe_bed' },

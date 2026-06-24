@@ -5,12 +5,23 @@ export type ItemId =
   | 'branch' // 树枝
   | 'wood' // 木材
   | 'stone' // 石头
-  // 鱼（Phase B）—— 按稀有度
+  // 鱼
   | 'fish_common' // 鲈鱼（常见）
+  | 'fish_crucian' // 鲫鱼（常见）
+  | 'fish_carp' // 鲤鱼（常见）
+  | 'fish_bluegill' // 蓝鳃鱼（常见）
+  | 'fish_loach' // 泥鳅（常见）
+  | 'fish_salmon' // 鲑鱼（稀有）
+  | 'fish_mackerel' // 鲭鱼（稀有）
   | 'fish_rare' // 金鱼（稀有）
+  | 'fish_mahi_mahi' // 鬼头刀（传说）
   | 'fish_legend' // 鲨鱼（传说）
-  // 虫（Phase B）
+  // 虫
   | 'bug_common' // 蝴蝶（常见）
+  | 'bug_cicada' // 蝉（常见）
+  | 'bug_beetle' // 独角仙（常见）
+  | 'bug_dragonfly' // 蜻蜓（稀有）
+  | 'bug_moth' // 飞蛾（稀有）
   | 'bug_rare' // 萤火虫（稀有）
   // 种植
   | 'sapling' // 树苗
@@ -53,8 +64,8 @@ export type ItemId =
 
 export type ToolId = 'axe' | 'fishingRod' | 'net' | 'shovel';
 
-export type FishItemId = 'fish_common' | 'fish_rare' | 'fish_legend';
-export type BugItemId = 'bug_common' | 'bug_rare';
+export type FishItemId = 'fish_common' | 'fish_crucian' | 'fish_carp' | 'fish_bluegill' | 'fish_loach' | 'fish_salmon' | 'fish_mackerel' | 'fish_rare' | 'fish_mahi_mahi' | 'fish_legend';
+export type BugItemId = 'bug_common' | 'bug_cicada' | 'bug_beetle' | 'bug_dragonfly' | 'bug_moth' | 'bug_rare';
 /** 家具类物品 id（可摆放到室内的）。 */
 export type FurnitureItemId =
   | 'furniture_stool' | 'furniture_table' | 'furniture_bed' | 'furniture_lamp' | 'furniture_rug'
@@ -88,9 +99,20 @@ export const ITEMS: Record<ItemId, ItemDef> = {
   wood: { id: 'wood', name: '木材', sellPrice: 30, buyPrice: 0, stack: 99, stackable: true, rarity: 'common' },
   stone: { id: 'stone', name: '石头', sellPrice: 12, buyPrice: 0, stack: 99, stackable: true, rarity: 'common' },
   fish_common: { id: 'fish_common', name: '鲈鱼', sellPrice: 120, buyPrice: 0, stack: 30, stackable: true, rarity: 'common' },
+  fish_crucian: { id: 'fish_crucian', name: '鲫鱼', sellPrice: 80, buyPrice: 0, stack: 30, stackable: true, rarity: 'common' },
+  fish_carp: { id: 'fish_carp', name: '鲤鱼', sellPrice: 150, buyPrice: 0, stack: 30, stackable: true, rarity: 'common' },
+  fish_bluegill: { id: 'fish_bluegill', name: '蓝鳃鱼', sellPrice: 100, buyPrice: 0, stack: 30, stackable: true, rarity: 'common' },
+  fish_loach: { id: 'fish_loach', name: '泥鳅', sellPrice: 60, buyPrice: 0, stack: 30, stackable: true, rarity: 'common' },
+  fish_salmon: { id: 'fish_salmon', name: '鲑鱼', sellPrice: 500, buyPrice: 0, stack: 20, stackable: true, rarity: 'rare' },
+  fish_mackerel: { id: 'fish_mackerel', name: '鲭鱼', sellPrice: 350, buyPrice: 0, stack: 20, stackable: true, rarity: 'rare' },
   fish_rare: { id: 'fish_rare', name: '金鱼', sellPrice: 600, buyPrice: 0, stack: 20, stackable: true, rarity: 'rare' },
+  fish_mahi_mahi: { id: 'fish_mahi_mahi', name: '鬼头刀', sellPrice: 1800, buyPrice: 0, stack: 10, stackable: true, rarity: 'legend' },
   fish_legend: { id: 'fish_legend', name: '鲨鱼', sellPrice: 2400, buyPrice: 0, stack: 10, stackable: true, rarity: 'legend' },
   bug_common: { id: 'bug_common', name: '蝴蝶', sellPrice: 90, buyPrice: 0, stack: 30, stackable: true, rarity: 'common' },
+  bug_cicada: { id: 'bug_cicada', name: '蝉', sellPrice: 70, buyPrice: 0, stack: 30, stackable: true, rarity: 'common' },
+  bug_beetle: { id: 'bug_beetle', name: '独角仙', sellPrice: 120, buyPrice: 0, stack: 30, stackable: true, rarity: 'common' },
+  bug_dragonfly: { id: 'bug_dragonfly', name: '蜻蜓', sellPrice: 200, buyPrice: 0, stack: 20, stackable: true, rarity: 'rare' },
+  bug_moth: { id: 'bug_moth', name: '飞蛾', sellPrice: 150, buyPrice: 0, stack: 20, stackable: true, rarity: 'rare' },
   bug_rare: { id: 'bug_rare', name: '萤火虫', sellPrice: 480, buyPrice: 0, stack: 20, stackable: true, rarity: 'rare' },
   sapling: { id: 'sapling', name: '树苗', sellPrice: 20, buyPrice: 200, stack: 30, stackable: true, rarity: 'common' },
   flower_seed: { id: 'flower_seed', name: '花种', sellPrice: 10, buyPrice: 100, stack: 30, stackable: true, rarity: 'common' },

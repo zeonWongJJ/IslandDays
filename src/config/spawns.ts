@@ -22,15 +22,26 @@ interface BugSpawnEntry {
 
 /** 鱼种出没表：按季节和时段筛选可用鱼种 */
 const FISH_SPAWN: FishSpawnEntry[] = [
-  { itemId: 'fish_common', seasons: ['spring', 'summer', 'fall', 'winter'], hours: [], weight: 60 },
-  { itemId: 'fish_rare',   seasons: ['summer'], hours: [{ start: 19, end: 6 }], weight: 20 },
-  { itemId: 'fish_legend', seasons: ['summer'], hours: [{ start: 8, end: 18 }], weight: 5 },
+  { itemId: 'fish_common',  seasons: ['spring', 'summer', 'fall', 'winter'], hours: [], weight: 25 },
+  { itemId: 'fish_crucian', seasons: ['spring', 'summer', 'fall'],         hours: [], weight: 22 },
+  { itemId: 'fish_carp',    seasons: ['spring', 'summer', 'fall'],         hours: [], weight: 18 },
+  { itemId: 'fish_bluegill', seasons: ['summer'],                          hours: [{ start: 8, end: 17 }], weight: 18 },
+  { itemId: 'fish_loach',    seasons: ['spring', 'summer'],                hours: [{ start: 20, end: 6 }], weight: 15 },
+  { itemId: 'fish_salmon',  seasons: ['fall'],                             hours: [{ start: 7, end: 14 }], weight: 10 },
+  { itemId: 'fish_mackerel', seasons: ['summer', 'fall'],                  hours: [{ start: 6, end: 16 }], weight: 12 },
+  { itemId: 'fish_rare',    seasons: ['summer'],                           hours: [{ start: 19, end: 6 }], weight: 8 },
+  { itemId: 'fish_mahi_mahi', seasons: ['summer'],                         hours: [{ start: 8, end: 16 }], weight: 3 },
+  { itemId: 'fish_legend',  seasons: ['summer'],                           hours: [{ start: 18, end: 6 }], weight: 2 },
 ];
 
 /** 虫种出没表 */
 const BUG_SPAWN: BugSpawnEntry[] = [
-  { itemId: 'bug_common', seasons: ['spring', 'summer'], hours: [{ start: 6, end: 18 }], weight: 70 },
-  { itemId: 'bug_rare',   seasons: ['summer'], hours: [{ start: 19, end: 5 }], weight: 25 },
+  { itemId: 'bug_common',    seasons: ['spring', 'summer', 'fall'],       hours: [{ start: 6, end: 18 }], weight: 30 },
+  { itemId: 'bug_cicada',    seasons: ['summer'],                         hours: [{ start: 7, end: 17 }], weight: 25 },
+  { itemId: 'bug_beetle',    seasons: ['summer'],                         hours: [{ start: 18, end: 5 }], weight: 18 },
+  { itemId: 'bug_dragonfly', seasons: ['summer', 'fall'],                 hours: [{ start: 8, end: 16 }], weight: 15 },
+  { itemId: 'bug_moth',      seasons: ['summer'],                         hours: [{ start: 19, end: 4 }], weight: 10 },
+  { itemId: 'bug_rare',      seasons: ['summer'],                         hours: [{ start: 19, end: 5 }], weight: 10 },
 ];
 
 export function seasonFromDay(day: number, seasonStart: Record<Season, number>): Season {

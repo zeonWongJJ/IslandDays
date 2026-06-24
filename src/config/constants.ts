@@ -180,7 +180,11 @@ export const MUSEUM = {
   // 全图鉴收集奖励
   completionReward: 5000,
   // 可捐赠的物品列表
-  donateableItems: ['fish_common', 'fish_rare', 'fish_legend', 'bug_common', 'bug_rare'] as const,
+  donateableItems: [
+    'fish_common', 'fish_crucian', 'fish_carp', 'fish_bluegill', 'fish_loach',
+    'fish_salmon', 'fish_mackerel', 'fish_rare', 'fish_mahi_mahi', 'fish_legend',
+    'bug_common', 'bug_cicada', 'bug_beetle', 'bug_dragonfly', 'bug_moth', 'bug_rare',
+  ] as const,
 } as const;
 
 export const SAVE = {
