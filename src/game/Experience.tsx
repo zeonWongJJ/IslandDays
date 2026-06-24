@@ -28,6 +28,7 @@ import { MuseumBuilding } from './museum/MuseumBuilding.tsx';
 import { MuseumInterior } from './museum/MuseumInterior.tsx';
 import { AnimalField } from './animals/AnimalField.tsx';
 import { WeatherSystem } from './WeatherSystem.tsx';
+import { AmbientFX } from './AmbientFX.tsx';
 import { MusicSystem } from './MusicSystem.tsx';
 import { EventSystem } from './EventSystem.tsx';
 import { IslandLights } from './world/IslandLights.tsx';
@@ -72,6 +73,7 @@ export function Experience() {
           <>
             <DayNight />
             <SkyEffects />
+            <AmbientFX />
             <EnvironmentVFX />
           </>
         )}
