@@ -15,13 +15,13 @@ export function PostProcessing() {
         mipmapBlur
       />
       <HueSaturation
-        hue={0.02}
-        saturation={0.25}
+        hue={0.01}
+        saturation={0.35}
         blendFunction={BlendFunction.NORMAL}
       />
       <BrightnessContrast
-        brightness={0.04}
-        contrast={0.12}
+        brightness={0.02}
+        contrast={0.22}
         blendFunction={BlendFunction.NORMAL}
       />
       <Vignette
