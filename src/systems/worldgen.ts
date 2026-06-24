@@ -62,7 +62,32 @@ export function generateWorld(seed = 20240618): GeneratedWorld {
       hp: 3,
       state: 'intact',
       regrowAt: null,
-      variant: Math.floor(rng() * 3),
+      variant: Math.floor(rng() * 9),
+    });
+  }
+
+  // 棕榈树：在沙滩上放置
+  for (let i = 0; i < 18; i++) {
+    const angle = (i / 18) * Math.PI * 2 + (rng() - 0.5) * 0.3;
+    const r = half * (0.705 + rng() * 0.065);
+    let x = Math.cos(angle) * r;
+    let z = Math.sin(angle) * r;
+    let tries = 0;
+    while ((groundKind(x, z) !== 'sand' || blocksWalking(x, z) || !acceptsTreePlacement(x, z)) && tries < 12) {
+      const a2 = angle + (rng() - 0.5) * 0.5;
+      const r2 = half * (0.7 + rng() * 0.075);
+      x = Math.cos(a2) * r2;
+      z = Math.sin(a2) * r2;
+      tries += 1;
+    }
+    if (groundKind(x, z) !== 'sand' || blocksWalking(x, z) || !acceptsTreePlacement(x, z)) continue;
+    trees.push({
+      id: `palm-${i}`,
+      pos: [x, 0, z],
+      hp: 3,
+      state: 'intact',
+      regrowAt: null,
+      variant: 9 + Math.floor(rng() * 2),
     });
   }
 
@@ -75,6 +100,22 @@ export function generateWorld(seed = 20240618): GeneratedWorld {
     drops.push({
       id: `drop-${i}`,
       itemId: 'branch',
+      pos: [x, 0, z],
+      amount: 1,
+    });
+  }
+
+  // 漂流木：沙滩上
+  for (let i = 0; i < 12; i++) {
+    const angle = (i / 12) * Math.PI * 2 + (rng() - 0.5) * 0.4;
+    const r = half * (0.71 + rng() * 0.06);
+    const x = Math.cos(angle) * r;
+    const z = Math.sin(angle) * r;
+    if (Math.hypot(x, z) < 5) continue;
+    if (groundKind(x, z) !== 'sand' || blocksWalking(x, z)) continue;
+    drops.push({
+      id: `driftwood-${i}`,
+      itemId: 'driftwood',
       pos: [x, 0, z],
       amount: 1,
     });

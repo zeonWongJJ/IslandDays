@@ -56,6 +56,9 @@ const TREE_PATHS = [
   '/assets/models/kenney/trees/tree_tall.glb',
   '/assets/models/kenney/trees/tree_pineDefaultA.glb',
   '/assets/models/kenney/trees/tree_pineDefaultB.glb',
+  '/assets/models/kenney/trees/tree_default_dark.glb',
+  '/assets/models/kenney/trees/tree_palm.glb',
+  '/assets/models/kenney/trees/tree_palmShort.glb',
 ];
 TREE_PATHS.forEach((p) => useGLTF.preload(p));
 

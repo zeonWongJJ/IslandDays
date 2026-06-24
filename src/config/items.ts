@@ -32,6 +32,9 @@ export type ItemId =
   | 'tomato'
   | 'carrot'
   | 'wheat'
+  // 海滩
+  | 'coconut'
+  | 'driftwood'
   // 矿石（工具升级材料）
   | 'iron_ore'
   | 'gold_ore'
@@ -128,6 +131,8 @@ export const ITEMS: Record<ItemId, ItemDef> = {
   tomato: { id: 'tomato', name: '番茄', sellPrice: 60, buyPrice: 0, stack: 30, stackable: true, rarity: 'common' },
   carrot: { id: 'carrot', name: '胡萝卜', sellPrice: 50, buyPrice: 0, stack: 30, stackable: true, rarity: 'common' },
   wheat: { id: 'wheat', name: '小麦', sellPrice: 40, buyPrice: 0, stack: 30, stackable: true, rarity: 'common' },
+  coconut: { id: 'coconut', name: '椰子', sellPrice: 80, buyPrice: 0, stack: 30, stackable: true, rarity: 'common' },
+  driftwood: { id: 'driftwood', name: '漂流木', sellPrice: 25, buyPrice: 0, stack: 30, stackable: true, rarity: 'common' },
   iron_ore: { id: 'iron_ore', name: '铁矿石', sellPrice: 50, buyPrice: 500, stack: 30, stackable: true, rarity: 'common' },
   gold_ore: { id: 'gold_ore', name: '金矿石', sellPrice: 200, buyPrice: 2000, stack: 10, stackable: true, rarity: 'rare' },
   // 家具：可购买成品，也可用图纸合成。stack=1（独立实例）。

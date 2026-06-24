@@ -39,6 +39,7 @@ const SELL_ORDER: ItemId[] = [
   'tomato_seed', 'carrot_seed', 'wheat_seed', 'tomato', 'carrot', 'wheat',
   'iron_ore', 'gold_ore',  // <-- add
   'tomato', 'carrot', 'wheat',
+  'coconut', 'driftwood',
   'furniture_stool', 'furniture_table', 'furniture_bed', 'furniture_lamp', 'furniture_rug',
   'furniture_chair', 'furniture_sofa', 'furniture_bookcase', 'furniture_desk',
   'furniture_coffeeTable', 'furniture_bench', 'furniture_sideTable', 'furniture_cabinet',
@@ -72,6 +73,8 @@ const ITEM_ICON: Record<ItemId, string> = {
   tomato: '🍅',
   carrot: '🥕',
   wheat: '🌾',
+  coconut: '🥥',
+  driftwood: '🪵',
   iron_ore: '🪨',
   gold_ore: '✨',
   furniture_stool: '🪑',

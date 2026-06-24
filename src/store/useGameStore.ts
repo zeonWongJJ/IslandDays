@@ -331,24 +331,38 @@ export const useGameStore = create<GameState>()(
           );
           const newDrops: DropData[] = [];
           const [tx, , tz] = tree.pos;
-          for (let i = 0; i < TREE.woodDrop; i++) {
-            newDrops.push({
-              id: `drop-${Date.now()}-${Math.random().toString(36).slice(2, 7)}-${i}`,
-              itemId: 'wood',
-              pos: [tx + (Math.random() - 0.5) * 1.6, 0, tz + (Math.random() - 0.5) * 1.6],
-              amount: 1,
-            });
+          const isPalm = tree.variant >= 9;
+          if (isPalm) {
+            for (let i = 0; i < 3; i++) {
+              newDrops.push({
+                id: `drop-${Date.now()}-${Math.random().toString(36).slice(2, 7)}-c${i}`,
+                itemId: 'coconut',
+                pos: [tx + (Math.random() - 0.5) * 1.6, 0, tz + (Math.random() - 0.5) * 1.6],
+                amount: 1,
+              });
+            }
+            drops = [...s.drops, ...newDrops];
+            get().pushToast('椰子树倒了！掉落了椰子');
+          } else {
+            for (let i = 0; i < TREE.woodDrop; i++) {
+              newDrops.push({
+                id: `drop-${Date.now()}-${Math.random().toString(36).slice(2, 7)}-${i}`,
+                itemId: 'wood',
+                pos: [tx + (Math.random() - 0.5) * 1.6, 0, tz + (Math.random() - 0.5) * 1.6],
+                amount: 1,
+              });
+            }
+            for (let i = 0; i < TREE.branchDrop; i++) {
+              newDrops.push({
+                id: `drop-${Date.now()}-${Math.random().toString(36).slice(2, 7)}-b${i}`,
+                itemId: 'branch',
+                pos: [tx + (Math.random() - 0.5) * 1.6, 0, tz + (Math.random() - 0.5) * 1.6],
+                amount: 1,
+              });
+            }
+            drops = [...s.drops, ...newDrops];
+            get().pushToast('树倒了！掉落了木材和树枝');
           }
-          for (let i = 0; i < TREE.branchDrop; i++) {
-            newDrops.push({
-              id: `drop-${Date.now()}-${Math.random().toString(36).slice(2, 7)}-b${i}`,
-              itemId: 'branch',
-              pos: [tx + (Math.random() - 0.5) * 1.6, 0, tz + (Math.random() - 0.5) * 1.6],
-              amount: 1,
-            });
-          }
-          drops = [...s.drops, ...newDrops];
-          get().pushToast('树倒了！掉落了木材和树枝');
         }
 
         set({

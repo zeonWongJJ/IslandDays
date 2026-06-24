@@ -43,6 +43,8 @@ const ICON: Record<ItemId, string> = {
   tomato: '🍅',
   carrot: '🥕',
   wheat: '🌾',
+  coconut: '🥥',
+  driftwood: '🪵',
   iron_ore: '🪨',
   gold_ore: '✨',
   furniture_stool: '🪑',

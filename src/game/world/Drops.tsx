@@ -37,6 +37,8 @@ const ITEM_COLOR: Record<ItemId, string> = {
   tomato: '#cc4444',
   carrot: '#ee8833',
   wheat: '#ddcc66',
+  coconut: '#6a4a1a',
+  driftwood: '#9a8a6a',
   iron_ore: '#7a7a8a',
   gold_ore: '#e8c840',
   furniture_stool: '#b08a5a',
