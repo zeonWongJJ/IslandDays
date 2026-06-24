@@ -16,7 +16,7 @@ function useLampPositions(): LampPos[] {
     lamps.push({ x: MAP_LAYOUT.shop.pos[0], z: MAP_LAYOUT.shop.pos[2], hasLight: true });
     lamps.push({ x: MAP_LAYOUT.home.pos[0], z: MAP_LAYOUT.home.pos[2], hasLight: true });
 
-    // 广场周围：整齐排列的路灯（沿广场边缘等距）
+    // 广场周围：4 盏真灯光 + 4 盏装饰灯（交替）
     const plaza = MAP_LAYOUT.plaza;
     const plazaRadius = plaza.padRadius + 1.5;
     const plazaCount = 8;
@@ -25,7 +25,7 @@ function useLampPositions(): LampPos[] {
       lamps.push({
         x: plaza.pos[0] + Math.cos(angle) * plazaRadius,
         z: plaza.pos[2] + Math.sin(angle) * plazaRadius,
-        hasLight: true,
+        hasLight: i % 2 === 0,
       });
     }
 

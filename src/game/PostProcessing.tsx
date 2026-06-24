@@ -9,10 +9,9 @@ export function PostProcessing() {
   return (
     <EffectComposer>
       <Bloom
-        intensity={isNight ? 0.55 : 0.12}
-        luminanceThreshold={isNight ? 0.4 : 0.7}
+        intensity={isNight ? 0.4 : 0.1}
+        luminanceThreshold={isNight ? 0.5 : 0.8}
         luminanceSmoothing={0.9}
-        mipmapBlur
       />
       <HueSaturation
         hue={0.01}
