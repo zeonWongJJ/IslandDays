@@ -36,6 +36,7 @@ import { IslandDecorations } from './world/IslandDecorations.tsx';
 import { BackgroundScenery } from './world/BackgroundScenery.tsx';
 import { Waterfall } from './world/Waterfall.tsx';
 import { Water } from './world/Water.tsx';
+import { SkyEffects } from './SkyEffects.tsx';
 import { FishInWater } from './world/FishInWater.tsx';
 import { Paths } from './world/Paths.tsx';
 import { ShoreDetail } from './world/ShoreDetail.tsx';
@@ -70,6 +71,7 @@ export function Experience() {
         {!isIndoors && (
           <>
             <DayNight />
+            <SkyEffects />
             <EnvironmentVFX />
           </>
         )}
