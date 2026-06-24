@@ -5,7 +5,7 @@ import type { AnimalId } from '../config/animals.ts';
 import { ANIMALS, animalPositionAt } from '../config/animals.ts';
 import { MAP_LAYOUT } from '../config/mapLayout.ts';
 import type { ToolId } from '../config/items.ts';
-import type { BugSpot, FishSpot, RockSpot, TreeData, PlantSpot } from '../systems/save.ts';
+import type { BugSpot, FishSpot, RockSpot, TreeData, PlantSpot, PathTile } from '../systems/save.ts';
 import { MUSEUM } from '../config/constants.ts';
 import { WORLD_FEATURES, type WorldFeatureId } from '../config/worldFeatures.ts';
 
@@ -20,7 +20,8 @@ export type InteractionTarget =
   | { kind: 'tree'; id: string; dist: number }
   | { kind: 'plant'; id: string; dist: number; spot: PlantSpot }
   | { kind: 'rock'; id: string; dist: number }
-  | { kind: 'feature'; id: WorldFeatureId; dist: number };
+  | { kind: 'feature'; id: WorldFeatureId; dist: number }
+  | { kind: 'path'; id: string; dist: number; tile: PathTile };
 
 interface FindInteractionTargetArgs {
   playerX: number;
@@ -30,21 +31,23 @@ interface FindInteractionTargetArgs {
   bugs: BugSpot[];
   plants: PlantSpot[];
   rocks: RockSpot[];
+  paths: PathTile[];
   minutes: number;
 }
 
 const PRIORITY: Record<InteractionTarget['kind'], number> = {
   shop: 100,
   museum: 95,
+  feature: 92,
   npc: 90,
   animal: 85,
   house: 80,
+  rock: 75,
   fish: 70,
   bug: 60,
+  path: 57,
   plant: 55,
-  rock: 75,
   tree: 50,
-  feature: 92,
 };
 
 export function findInteractionTarget({
@@ -55,6 +58,7 @@ export function findInteractionTarget({
   bugs,
   plants,
   rocks,
+  paths,
   minutes,
 }: FindInteractionTargetArgs): InteractionTarget | null {
   const targets: InteractionTarget[] = [];
@@ -62,6 +66,11 @@ export function findInteractionTarget({
   for (const feature of WORLD_FEATURES) {
     const dist = Math.hypot(playerX - feature.x, playerZ - feature.z);
     if (dist <= feature.radius) targets.push({ kind: 'feature', id: feature.id, dist });
+  }
+
+  for (const p of paths) {
+    const dist = Math.hypot(playerX - p.pos[0], playerZ - p.pos[2]);
+    if (dist <= WORLD.interactRadius) targets.push({ kind: 'path', id: p.id, dist, tile: p });
   }
 
   const distShop = Math.hypot(playerX - MAP_LAYOUT.shop.pos[0], playerZ - MAP_LAYOUT.shop.pos[2]);
@@ -153,5 +162,6 @@ export function interactionHint(target: InteractionTarget, equipped: ToolId | nu
     return '装备水壶浇水（按 5）';
   }
   if (target.kind === 'rock') return equipped === 'shovel' ? '按 E 采矿' : '需要装备铲子才能采矿（按 4）';
+  if (target.kind === 'path') return '按 E 拆除道路';
   return equipped === 'axe' ? '按 E 砍树' : '装备斧头才能砍树（按 1）';
 }

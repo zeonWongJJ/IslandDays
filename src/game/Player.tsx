@@ -9,7 +9,7 @@ import { useFrame, useThree } from '@react-three/fiber';
 import { useKeyboardControls } from '@react-three/drei';
 import * as THREE from 'three';
 import { WORLD, TREE, BUG, HOUSE, ROOMS, MUSEUM, type RoomId } from '../config/constants.ts';
-import { TOOLS, type ToolId } from '../config/items.ts';
+import { TOOLS, type ItemId, type ToolId } from '../config/items.ts';
 import { NPCS, npcPositionAt } from '../config/npcs.ts';
 import { ANIMALS, animalPositionAt } from '../config/animals.ts';
 import { MAP_LAYOUT } from '../config/mapLayout.ts';
@@ -42,6 +42,7 @@ export function Player() {
   const fishSpots = useGameStore((s) => s.fishSpots);
   const bugs = useGameStore((s) => s.bugs);
   const plants = useGameStore((s) => s.plants);
+  const paths = useGameStore((s) => s.paths);
   const rocks = useGameStore((s) => s.rocks);
   const equipped = useGameStore((s) => s.equipped);
   const fishingActive = useGameStore((s) => s.fishing.phase !== 'idle');
@@ -85,6 +86,8 @@ export function Player() {
   const waterPlant = useGameStore((s) => s.waterPlant);
   const harvestPlant = useGameStore((s) => s.harvestPlant);
   const mineRock = useGameStore((s) => s.mineRock);
+  const placePath = useGameStore((s) => s.placePath);
+  const removePath = useGameStore((s) => s.removePath);
 
   // 同步 playerRef 供相机/其它组件读取
   useEffect(() => {
@@ -458,6 +461,7 @@ export function Player() {
         fishSpots,
         bugs,
         plants,
+        paths,
         rocks,
         minutes: tRef.current,
       });
@@ -504,6 +508,9 @@ export function Player() {
             else if (target.kind === 'rock') {
               mineRock(target.id);
             }
+            else if (target.kind === 'path') {
+              removePath(target.id);
+            }
             else {
               if (target.dist > BUG.catchRadius) {
                 pushToast('再靠近一点才能挥网捕虫');
@@ -526,6 +533,17 @@ export function Player() {
         const ePrev = !!prevKeys.current.interact;
         if (eDown && !ePrev) {
           digHole([g.position.x, 0, g.position.z]);
+        }
+      } else if (equipped === null) {
+        const hasPath = ['path_stone', 'path_brick', 'path_wood', 'path_dirt'].some((pt) => (useGameStore.getState().inventory[pt as ItemId] ?? 0) > 0);
+        if (hasPath) {
+          const hint3 = '按 E 铺设道路';
+          if (useGameStore.getState().interactHint !== hint3) setInteractHint(hint3);
+          const eDown = !!keys.interact;
+          const ePrev = !!prevKeys.current.interact;
+          if (eDown && !ePrev) {
+            placePath([g.position.x, 0, g.position.z]);
+          }
         }
       } else if (useGameStore.getState().interactHint !== null) {
         setInteractHint(null);

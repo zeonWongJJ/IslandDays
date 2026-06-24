@@ -35,6 +35,11 @@ export type ItemId =
   // 海滩
   | 'coconut'
   | 'driftwood'
+  // 道路
+  | 'path_stone'
+  | 'path_brick'
+  | 'path_wood'
+  | 'path_dirt'
   // 矿石（工具升级材料）
   | 'iron_ore'
   | 'gold_ore'
@@ -133,6 +138,10 @@ export const ITEMS: Record<ItemId, ItemDef> = {
   wheat: { id: 'wheat', name: '小麦', sellPrice: 40, buyPrice: 0, stack: 30, stackable: true, rarity: 'common' },
   coconut: { id: 'coconut', name: '椰子', sellPrice: 80, buyPrice: 0, stack: 30, stackable: true, rarity: 'common' },
   driftwood: { id: 'driftwood', name: '漂流木', sellPrice: 25, buyPrice: 0, stack: 30, stackable: true, rarity: 'common' },
+  path_stone: { id: 'path_stone', name: '石砖路', sellPrice: 5, buyPrice: 100, stack: 99, stackable: true, rarity: 'common' },
+  path_brick: { id: 'path_brick', name: '砖块路', sellPrice: 5, buyPrice: 120, stack: 99, stackable: true, rarity: 'common' },
+  path_wood: { id: 'path_wood', name: '木板路', sellPrice: 5, buyPrice: 150, stack: 99, stackable: true, rarity: 'common' },
+  path_dirt: { id: 'path_dirt', name: '土路', sellPrice: 2, buyPrice: 50, stack: 99, stackable: true, rarity: 'common' },
   iron_ore: { id: 'iron_ore', name: '铁矿石', sellPrice: 50, buyPrice: 500, stack: 30, stackable: true, rarity: 'common' },
   gold_ore: { id: 'gold_ore', name: '金矿石', sellPrice: 200, buyPrice: 2000, stack: 10, stackable: true, rarity: 'rare' },
   // 家具：可购买成品，也可用图纸合成。stack=1（独立实例）。

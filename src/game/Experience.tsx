@@ -37,6 +37,7 @@ import { BackgroundScenery } from './world/BackgroundScenery.tsx';
 import { Waterfall } from './world/Waterfall.tsx';
 import { Water } from './world/Water.tsx';
 import { FishInWater } from './world/FishInWater.tsx';
+import { Paths } from './world/Paths.tsx';
 import { ShoreDetail } from './world/ShoreDetail.tsx';
 import { MapLandmarks } from './world/MapLandmarks.tsx';
 import { RegionalContent } from './world/RegionalContent.tsx';
@@ -79,6 +80,7 @@ export function Experience() {
             <BackgroundScenery />
             <Water />
             <FishInWater />
+            <Paths />
             <Terrain />
             <GroundDetails />
             <ShorelineDetails />

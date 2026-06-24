@@ -193,6 +193,6 @@ export const MUSEUM = {
 export const SAVE = {
   // localStorage key。改 schema 时升 version 并在 save.ts 写迁移。
   key: 'ac-save-v1',
-  // 存档版本号，与 SaveData.version 对应。v14 种植进阶：wateredToday。
-  version: 14 as const,
+  // 存档版本号，与 SaveData.version 对应。v15 添加道路系统。
+  version: 15 as const,
 } as const;

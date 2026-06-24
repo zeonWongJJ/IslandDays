@@ -165,6 +165,10 @@ interface GameState extends SaveData {
   growPlants: () => void;
   mineRock: (rockId: string) => void;
 
+  // 道路
+  placePath: (pos: Vec3) => void;
+  removePath: (pathId: string) => void;
+
   // 博物馆
   enterMuseum: () => void;
   leaveMuseum: () => void;
@@ -1070,6 +1074,43 @@ export const useGameStore = create<GameState>()(
         get().pushToast(`采到了${ITEMS[itemId].name}！`);
       },
 
+      // ───────── 道路 ─────────
+      placePath: (pos) => {
+        const s = get();
+        const pathTypes = ['path_stone', 'path_brick', 'path_wood', 'path_dirt'] as const;
+        let chosen: (typeof pathTypes)[number] | null = null;
+        for (const pt of pathTypes) {
+          if ((s.inventory[pt] ?? 0) > 0) { chosen = pt; break; }
+        }
+        if (!chosen) { get().pushToast('需要购买道路砖（商店→苗木页）'); return; }
+        const sx = Math.round(pos[0]);
+        const sz = Math.round(pos[2]);
+        if (Math.hypot(sx - s.player.pos[0], sz - s.player.pos[2]) > WORLD.interactRadius) return;
+        const tooClose = s.plants.some((p) => Math.hypot(p.pos[0] - sx, p.pos[2] - sz) < 1);
+        if (tooClose) { get().pushToast('这里有植物，不能铺路'); return; }
+        const existing = s.paths.find((p) => p.pos[0] === sx && p.pos[2] === sz);
+        if (existing) { get().pushToast('这里已经有路了'); return; }
+        const id = `path-${Date.now()}`;
+        set({
+          paths: [...s.paths, { id, pos: [sx, 0, sz], type: chosen === 'path_stone' ? 'stone' : chosen === 'path_brick' ? 'brick' : chosen === 'path_wood' ? 'wood' : 'dirt' }],
+          inventory: { ...s.inventory, [chosen]: (s.inventory[chosen] ?? 0) - 1 },
+        });
+        get().pushToast('铺设了道路');
+      },
+
+      removePath: (pathId) => {
+        const s = get();
+        const path = s.paths.find((p) => p.id === pathId);
+        if (!path) return;
+        const typeMap: Record<string, ItemId> = { stone: 'path_stone', brick: 'path_brick', wood: 'path_wood', dirt: 'path_dirt' };
+        const itemId = typeMap[path.type] as ItemId;
+        set({
+          paths: s.paths.filter((p) => p.id !== pathId),
+          inventory: { ...s.inventory, [itemId]: Math.min((s.inventory[itemId] ?? 0) + 1, ITEMS[itemId].stack) },
+        });
+        get().pushToast('拆除了道路，回收了材料');
+      },
+
       // ───────── 博物馆 ─────────
       enterMuseum: () => {
         const s = get();
@@ -1167,6 +1208,7 @@ export const useGameStore = create<GameState>()(
         social: s.social,
         weather: s.weather,
         plants: s.plants,
+        paths: s.paths,
         collection: s.collection,
         toolLevel: s.toolLevel,
         museumDonations: s.museumDonations,

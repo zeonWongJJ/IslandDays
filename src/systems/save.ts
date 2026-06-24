@@ -58,6 +58,14 @@ export interface PlantSpot {
   wateredToday: boolean;
 }
 
+export type PathType = 'stone' | 'brick' | 'wood' | 'dirt';
+
+export interface PathTile {
+  id: string;
+  pos: Vec3;
+  type: PathType;
+}
+
 export interface RockSpot {
   id: string;
   pos: Vec3;
@@ -111,6 +119,7 @@ export interface SaveData {
   };
   weather: WeatherPattern;
   plants: PlantSpot[];
+  paths: PathTile[];
   rocks: RockSpot[];
   collection: Record<string, true>;
   toolLevel: Record<string, number>;
@@ -228,6 +237,10 @@ const migrations: Record<number, Migration> = {
         : [],
     };
   },
+  15: (d) => ({
+    ...d,
+    paths: Array.isArray((d as Loose).paths) ? (d as Loose).paths : [],
+  }),
 };
 
 function isWeather(value: unknown): value is WeatherPattern {
@@ -264,6 +277,7 @@ export function defaultSave(): SaveData {
     social: { daily: {} },
     weather: 'clear',
     plants: [],
+    paths: [],
     rocks: [],
     collection: {},
     toolLevel: {},

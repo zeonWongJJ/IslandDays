@@ -40,6 +40,7 @@ const SELL_ORDER: ItemId[] = [
   'iron_ore', 'gold_ore',  // <-- add
   'tomato', 'carrot', 'wheat',
   'coconut', 'driftwood',
+  'path_stone', 'path_brick', 'path_wood', 'path_dirt',
   'furniture_stool', 'furniture_table', 'furniture_bed', 'furniture_lamp', 'furniture_rug',
   'furniture_chair', 'furniture_sofa', 'furniture_bookcase', 'furniture_desk',
   'furniture_coffeeTable', 'furniture_bench', 'furniture_sideTable', 'furniture_cabinet',
@@ -75,6 +76,10 @@ const ITEM_ICON: Record<ItemId, string> = {
   wheat: '🌾',
   coconut: '🥥',
   driftwood: '🪵',
+  path_stone: '⬜',
+  path_brick: '🟥',
+  path_wood: '🟫',
+  path_dirt: '🟨',
   iron_ore: '🪨',
   gold_ore: '✨',
   furniture_stool: '🪑',
@@ -261,7 +266,7 @@ export function ShopUI() {
 
         {tab === 'plants' && (
           <div className="shop-list">
-            {['sapling', 'flower_seed', 'tomato_seed', 'carrot_seed', 'wheat_seed'].map((id) => {
+            {['sapling', 'flower_seed', 'tomato_seed', 'carrot_seed', 'wheat_seed', 'path_stone', 'path_brick', 'path_wood', 'path_dirt'].map((id) => {
               const def = ITEMS[id as ItemId];
               const count = inventory[id as ItemId] ?? 0;
               const price = def.buyPrice;
