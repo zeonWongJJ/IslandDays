@@ -9,13 +9,26 @@ interface LampPos { x: number; z: number; hasLight: boolean }
 function useLampPositions(): LampPos[] {
   return useMemo(() => {
     const lamps: LampPos[] = [];
-    // 关键位置用真灯光
+    // 关键建筑：真灯光
     for (const npc of NPCS) {
       lamps.push({ x: npc.homePos[0], z: npc.homePos[2], hasLight: true });
     }
     lamps.push({ x: MAP_LAYOUT.shop.pos[0], z: MAP_LAYOUT.shop.pos[2], hasLight: true });
-    lamps.push({ x: MAP_LAYOUT.plaza.pos[0], z: MAP_LAYOUT.plaza.pos[2], hasLight: true });
     lamps.push({ x: MAP_LAYOUT.home.pos[0], z: MAP_LAYOUT.home.pos[2], hasLight: true });
+
+    // 广场周围：整齐排列的路灯（沿广场边缘等距）
+    const plaza = MAP_LAYOUT.plaza;
+    const plazaRadius = plaza.padRadius + 1.5;
+    const plazaCount = 8;
+    for (let i = 0; i < plazaCount; i++) {
+      const angle = (i / plazaCount) * Math.PI * 2;
+      lamps.push({
+        x: plaza.pos[0] + Math.cos(angle) * plazaRadius,
+        z: plaza.pos[2] + Math.sin(angle) * plazaRadius,
+        hasLight: true,
+      });
+    }
+
     // 沿主路放装饰灯柱（无 real light，只有自发光小球）
     for (const road of MAP_LAYOUT.roads) {
       const dx = road.to[0] - road.from[0];
@@ -24,16 +37,17 @@ function useLampPositions(): LampPos[] {
       if (len <= 0.01) continue;
       const nx = -dz / len;
       const nz = dx / len;
-      const count = Math.max(1, Math.floor(len / 16));
+      const count = Math.max(1, Math.floor(len / 18));
       for (let i = 0; i <= count; i++) {
         const t = count > 0 ? i / count : 0.5;
         const side = i % 2 === 0 ? 1 : -1;
         const shoulder = road.width + 1.15;
-        lamps.push({
-          x: road.from[0] + dx * t + nx * shoulder * side,
-          z: road.from[1] + dz * t + nz * shoulder * side,
-          hasLight: false,
-        });
+        const x = road.from[0] + dx * t + nx * shoulder * side;
+        const z = road.from[1] + dz * t + nz * shoulder * side;
+        // 跳过广场区域内的灯（避免重复）
+        const distToPlaza = Math.hypot(x - plaza.pos[0], z - plaza.pos[2]);
+        if (distToPlaza < plazaRadius + 3) continue;
+        lamps.push({ x, z, hasLight: false });
       }
     }
     return lamps;
