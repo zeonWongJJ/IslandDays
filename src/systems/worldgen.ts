@@ -128,7 +128,7 @@ export function generateWorld(seed = 20240618): GeneratedWorld {
       fleeAt: null,
       // 首次激活延迟一个随机量，避免所有虫同时出现
       readyAt: Math.floor(rng() * 30),
-      variant: 0,
+      variant: Math.floor(rng() * 6),
     });
   }
 

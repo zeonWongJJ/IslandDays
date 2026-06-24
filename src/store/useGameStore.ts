@@ -827,8 +827,9 @@ export const useGameStore = create<GameState>()(
         const newAff = Math.min(100, curAff + delta);
         const unlock = npc.recipeUnlock;
         const unlocked = unlock && curAff < unlock.threshold && newAff >= unlock.threshold;
+        const itemName = ITEMS[itemId]?.name ?? itemId;
         const giftLine = liked
-          ? npc.giftResponses[s.clock.day % npc.giftResponses.length]
+          ? npc.giftResponses[s.clock.day % npc.giftResponses.length].replace(/\{item\}/g, itemName)
           : `${npc.name}接过礼物，礼貌地笑了笑。「谢谢，不过这个我可能用不太上…」`;
         const unlockLine = unlocked
           ? `\n\n（好感度达到${unlock.threshold}！${npc.name}给了你一张${ITEMS[unlock.recipe].name}）`

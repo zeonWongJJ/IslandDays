@@ -24,23 +24,23 @@ const LIKES_MIRA: ItemId[] = ['flower_seed', 'bug_common', 'bug_dragonfly', 'sap
 const LIKES_TAO: ItemId[] = ['fish_common', 'fish_rare', 'fish_salmon', 'fish_mahi_mahi'];
 const LIKES_LINA: ItemId[] = ['wood', 'sapling', 'fish_crucian', 'bug_beetle'];
 
-const giftResp = (item: string) => [
-  `${item}！米拉开心地收下了，闻了闻说「好香啊」。`,
-  `米拉接过${item}，眼睛亮了起来。「太谢谢了！」`,
-  `「哇，是${item}！」米拉高兴地转了个圈。`,
-  `米拉小心翼翼地把${item}收好，「我会好好珍惜的！」`,
+const giftRespMira = [
+  `{item}！米拉开心地收下了，闻了闻说「好香啊」。`,
+  `米拉接过{item}，眼睛亮了起来。「太谢谢了！」`,
+  `「哇，是{item}！」米拉高兴地转了个圈。`,
+  `米拉小心翼翼地把{item}收好，「我会好好珍惜的！」`,
 ];
-const giftRespTao = (item: string) => [
-  `${item}！阿陶仔细端详了一番，「这东西不错，我很喜欢。」`,
-  `阿陶收下${item}，高兴地说「改天一起钓鱼啊！」`,
-  `「哦！${item}！」阿陶推了推帽子，满意地点头。`,
-  `阿陶接过${item}，笑着说「你真有眼光！」`,
+const giftRespTao = [
+  `{item}！阿陶仔细端详了一番，「这东西不错，我很喜欢。」`,
+  `阿陶收下{item}，高兴地说「改天一起钓鱼啊！」`,
+  `「哦！{item}！」阿陶推了推帽子，满意地点头。`,
+  `阿陶接过{item}，笑着说「你真有眼光！」`,
 ];
-const giftRespLina = (item: string) => [
-  `${item}！莉娜点点头，「正好我需要这个，谢啦。」`,
-  `莉娜接过${item}，露出了满意的微笑。`,
-  `「${item}啊，做工不错。」莉娜仔细看了看收进口袋。`,
-  `莉娜收下${item}，轻声说「有心了，谢谢。」`,
+const giftRespLina = [
+  `{item}！莉娜点点头，「正好我需要这个，谢啦。」`,
+  `莉娜接过{item}，露出了满意的微笑。`,
+  `{item}啊，做工不错。莉娜仔细看了看收进口袋。`,
+  `莉娜收下{item}，轻声说「有心了，谢谢。」`,
 ];
 
 export const NPCS: NpcDef[] = [
@@ -63,7 +63,7 @@ export const NPCS: NpcDef[] = [
       '天色不早了，记得把今天捡到的东西整理一下。',
     ],
     likes: LIKES_MIRA,
-    giftResponses: giftResp('花'),
+    giftResponses: giftRespMira,
     recipeUnlock: { threshold: 30, recipe: 'recipe_stool' },
   },
   {
@@ -85,7 +85,7 @@ export const NPCS: NpcDef[] = [
       '钓上来的鱼记得拿去卖，攒够了钱可以升级工具。',
     ],
     likes: LIKES_TAO,
-    giftResponses: giftRespTao('鱼'),
+    giftResponses: giftRespTao,
     recipeUnlock: { threshold: 30, recipe: 'recipe_table' },
   },
   {
@@ -107,7 +107,7 @@ export const NPCS: NpcDef[] = [
       '你看这个岛的布局，我觉得还有改造的余地。',
     ],
     likes: LIKES_LINA,
-    giftResponses: giftRespLina('木材'),
+    giftResponses: giftRespLina,
     recipeUnlock: { threshold: 30, recipe: 'recipe_bed' },
   },
 ];

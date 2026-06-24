@@ -146,8 +146,12 @@ const BUSH_PATHS = [
 
 const FISH_MODEL_PATH = '/assets/models/kenney/animals/animal-fish.glb';
 const BUG_MODEL_PATHS = [
-  '/assets/models/kenney/animals/animal-bee.glb',
-  '/assets/models/kenney/animals/animal-bee.glb',
+  '/assets/models/kenney/animals/animal-bee.glb',         // 0: 蝴蝶
+  '/assets/models/kenney/animals/animal-bee.glb',         // 1: 萤火虫
+  '/assets/models/kenney/animals/animal-caterpillar.glb', // 2: 蝉
+  '/assets/models/kenney/animals/animal-crab.glb',        // 3: 独角仙
+  '/assets/models/kenney/animals/animal-parrot.glb',      // 4: 蜻蜓
+  '/assets/models/kenney/animals/animal-chick.glb',       // 5: 飞蛾
 ];
 [FISH_MODEL_PATH, ...BUG_MODEL_PATHS].forEach((p) => useGLTF.preload(p));
 
@@ -233,7 +237,9 @@ export function KenneyFishModel({ size = 0.95 }: { size?: number }) {
 
 export function KenneyBugModel({ variant = 0 }: { variant?: number }) {
   const path = BUG_MODEL_PATHS[variant % BUG_MODEL_PATHS.length];
-  const group = useAutoCenteredModel(path, variant === 1 ? 0.72 : 0.62);
+  const sizes = [0.62, 0.72, 0.55, 0.65, 0.7, 0.6];
+  const size = sizes[variant % sizes.length];
+  const group = useAutoCenteredModel(path, size);
   return <primitive object={group} />;
 }
 
