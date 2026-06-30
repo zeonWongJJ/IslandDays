@@ -68,17 +68,17 @@ function useAutoCenteredModel(path: string, targetSize: number, opacity = 1) {
 
 // ── Trees ──
 const TREE_PATHS = [
-  '/assets/models/kenney/trees/tree_default.glb',
-  '/assets/models/kenney/trees/tree_oak.glb',
-  '/assets/models/kenney/trees/tree_cone.glb',
-  '/assets/models/kenney/trees/tree_detailed.glb',
-  '/assets/models/kenney/trees/tree_fat.glb',
-  '/assets/models/kenney/trees/tree_tall.glb',
-  '/assets/models/kenney/trees/tree_pineDefaultA.glb',
-  '/assets/models/kenney/trees/tree_pineDefaultB.glb',
-  '/assets/models/kenney/trees/tree_default_dark.glb',
-  '/assets/models/kenney/trees/tree_palm.glb',
-  '/assets/models/kenney/trees/tree_palmShort.glb',
+  'assets/models/kenney/trees/tree_default.glb',
+  'assets/models/kenney/trees/tree_oak.glb',
+  'assets/models/kenney/trees/tree_cone.glb',
+  'assets/models/kenney/trees/tree_detailed.glb',
+  'assets/models/kenney/trees/tree_fat.glb',
+  'assets/models/kenney/trees/tree_tall.glb',
+  'assets/models/kenney/trees/tree_pineDefaultA.glb',
+  'assets/models/kenney/trees/tree_pineDefaultB.glb',
+  'assets/models/kenney/trees/tree_default_dark.glb',
+  'assets/models/kenney/trees/tree_palm.glb',
+  'assets/models/kenney/trees/tree_palmShort.glb',
 ];
 TREE_PATHS.forEach((p) => useGLTF.preload(p));
 
@@ -114,21 +114,21 @@ export function KenneyTree({ variant, opacity = 1, season }: { variant: number; 
 // 路径表，偏移由 autoCenter 自动计算 bounding box 居中
 interface FurnitureCfg { path: string }
 const FURNITURE_CFG: Record<string, FurnitureCfg> = {
-  furniture_stool:     { path: '/assets/models/kenney/furniture/stoolBar.glb' },
-  furniture_table:     { path: '/assets/models/kenney/furniture/tableRound.glb' },
-  furniture_bed:       { path: '/assets/models/kenney/furniture/bedSingle.glb' },
-  furniture_lamp:      { path: '/assets/models/kenney/furniture/lampRoundFloor.glb' },
-  furniture_rug:       { path: '/assets/models/kenney/furniture/rugRounded.glb' },
-  furniture_chair:     { path: '/assets/models/kenney/furniture/chair.glb' },
-  furniture_sofa:      { path: '/assets/models/kenney/furniture/loungeSofa.glb' },
-  furniture_bookcase:  { path: '/assets/models/kenney/furniture/bookcaseClosed.glb' },
-  furniture_desk:      { path: '/assets/models/kenney/furniture/desk.glb' },
-  furniture_coffeeTable: { path: '/assets/models/kenney/furniture/tableCoffee.glb' },
-  furniture_bench:     { path: '/assets/models/kenney/furniture/bench.glb' },
-  furniture_sideTable: { path: '/assets/models/kenney/furniture/sideTable.glb' },
-  furniture_cabinet:   { path: '/assets/models/kenney/furniture/kitchenCabinet.glb' },
-  furniture_lampTable: { path: '/assets/models/kenney/furniture/lampRoundTable.glb' },
-  furniture_rugSquare: { path: '/assets/models/kenney/furniture/rugSquare.glb' },
+  furniture_stool:     { path: 'assets/models/kenney/furniture/stoolBar.glb' },
+  furniture_table:     { path: 'assets/models/kenney/furniture/tableRound.glb' },
+  furniture_bed:       { path: 'assets/models/kenney/furniture/bedSingle.glb' },
+  furniture_lamp:      { path: 'assets/models/kenney/furniture/lampRoundFloor.glb' },
+  furniture_rug:       { path: 'assets/models/kenney/furniture/rugRounded.glb' },
+  furniture_chair:     { path: 'assets/models/kenney/furniture/chair.glb' },
+  furniture_sofa:      { path: 'assets/models/kenney/furniture/loungeSofa.glb' },
+  furniture_bookcase:  { path: 'assets/models/kenney/furniture/bookcaseClosed.glb' },
+  furniture_desk:      { path: 'assets/models/kenney/furniture/desk.glb' },
+  furniture_coffeeTable: { path: 'assets/models/kenney/furniture/tableCoffee.glb' },
+  furniture_bench:     { path: 'assets/models/kenney/furniture/bench.glb' },
+  furniture_sideTable: { path: 'assets/models/kenney/furniture/sideTable.glb' },
+  furniture_cabinet:   { path: 'assets/models/kenney/furniture/kitchenCabinet.glb' },
+  furniture_lampTable: { path: 'assets/models/kenney/furniture/lampRoundTable.glb' },
+  furniture_rugSquare: { path: 'assets/models/kenney/furniture/rugSquare.glb' },
 };
 Object.values(FURNITURE_CFG).forEach((c) => useGLTF.preload(c.path));
 
@@ -161,42 +161,42 @@ export function KenneyFurniture({ itemId }: { itemId: string }) {
 
 // ── Decorations ──
 const FLOWER_PATHS = [
-  '/assets/models/kenney/plants/flower_redA.glb',
-  '/assets/models/kenney/plants/flower_purpleA.glb',
-  '/assets/models/kenney/plants/flower_yellowA.glb',
-  '/assets/models/kenney/plants/grass.glb',
-  '/assets/models/kenney/rocks/rock_smallA.glb',
+  'assets/models/kenney/plants/flower_redA.glb',
+  'assets/models/kenney/plants/flower_purpleA.glb',
+  'assets/models/kenney/plants/flower_yellowA.glb',
+  'assets/models/kenney/plants/grass.glb',
+  'assets/models/kenney/rocks/rock_smallA.glb',
 ];
 FLOWER_PATHS.forEach((p) => useGLTF.preload(p));
 
 const ROCK_PATHS = [
-  '/assets/models/kenney/rocks/rock_smallA.glb',
-  '/assets/models/kenney/rocks/rock_smallB.glb',
-  '/assets/models/kenney/rocks/rock_smallC.glb',
-  '/assets/models/kenney/rocks/rock_smallFlatA.glb',
-  '/assets/models/kenney/rocks/rock_smallFlatB.glb',
+  'assets/models/kenney/rocks/rock_smallA.glb',
+  'assets/models/kenney/rocks/rock_smallB.glb',
+  'assets/models/kenney/rocks/rock_smallC.glb',
+  'assets/models/kenney/rocks/rock_smallFlatA.glb',
+  'assets/models/kenney/rocks/rock_smallFlatB.glb',
 ];
 ROCK_PATHS.forEach((p) => useGLTF.preload(p));
 
-const FENCE_PATH = '/assets/models/kenney/misc/fence_simple.glb';
-const FENCE_PLANKS_PATH = '/assets/models/kenney/misc/fence_planks.glb';
-const LOG_PATH = '/assets/models/kenney/misc/log.glb';
-const LOG_STACK_PATH = '/assets/models/kenney/misc/log_stack.glb';
+const FENCE_PATH = 'assets/models/kenney/misc/fence_simple.glb';
+const FENCE_PLANKS_PATH = 'assets/models/kenney/misc/fence_planks.glb';
+const LOG_PATH = 'assets/models/kenney/misc/log.glb';
+const LOG_STACK_PATH = 'assets/models/kenney/misc/log_stack.glb';
 const BUSH_PATHS = [
-  '/assets/models/kenney/plants/plant_bush.glb',
-  '/assets/models/kenney/plants/plant_bushSmall.glb',
-  '/assets/models/kenney/plants/plant_bushLarge.glb',
+  'assets/models/kenney/plants/plant_bush.glb',
+  'assets/models/kenney/plants/plant_bushSmall.glb',
+  'assets/models/kenney/plants/plant_bushLarge.glb',
 ];
 [FENCE_PATH, FENCE_PLANKS_PATH, LOG_PATH, LOG_STACK_PATH, ...BUSH_PATHS].forEach((p) => useGLTF.preload(p));
 
-const FISH_MODEL_PATH = '/assets/models/kenney/animals/animal-fish.glb';
+const FISH_MODEL_PATH = 'assets/models/kenney/animals/animal-fish.glb';
 const BUG_MODEL_PATHS = [
-  '/assets/models/kenney/animals/animal-bee.glb',         // 0: 蝴蝶
-  '/assets/models/kenney/animals/animal-bee.glb',         // 1: 萤火虫
-  '/assets/models/kenney/animals/animal-caterpillar.glb', // 2: 蝉
-  '/assets/models/kenney/animals/animal-crab.glb',        // 3: 独角仙
-  '/assets/models/kenney/animals/animal-parrot.glb',      // 4: 蜻蜓
-  '/assets/models/kenney/animals/animal-chick.glb',       // 5: 飞蛾
+  'assets/models/kenney/animals/animal-bee.glb',         // 0: 蝴蝶
+  'assets/models/kenney/animals/animal-bee.glb',         // 1: 萤火虫
+  'assets/models/kenney/animals/animal-caterpillar.glb', // 2: 蝉
+  'assets/models/kenney/animals/animal-crab.glb',        // 3: 独角仙
+  'assets/models/kenney/animals/animal-parrot.glb',      // 4: 蜻蜓
+  'assets/models/kenney/animals/animal-chick.glb',       // 5: 飞蛾
 ];
 [FISH_MODEL_PATH, ...BUG_MODEL_PATHS].forEach((p) => useGLTF.preload(p));
 
@@ -208,13 +208,13 @@ interface DropModelCfg {
 }
 
 const DROP_MODEL_CFG: Partial<Record<ItemId, DropModelCfg>> = {
-  branch: { path: '/assets/models/kenney/misc/log.glb', size: 0.55, y: -0.02, rotation: [0, 0.4, Math.PI / 2] },
-  wood: { path: '/assets/models/kenney/misc/log_stack.glb', size: 0.85 },
-  stone: { path: '/assets/models/kenney/rocks/rock_smallFlatA.glb', size: 0.55 },
-  iron_ore: { path: '/assets/models/kenney/rocks/rock_smallB.glb', size: 0.6 },
-  gold_ore: { path: '/assets/models/kenney/rocks/rock_smallC.glb', size: 0.6 },
-  sapling: { path: '/assets/models/kenney/plants/plant_bushSmall.glb', size: 0.65 },
-  flower_seed: { path: '/assets/models/kenney/plants/flower_redA.glb', size: 0.5 },
+  branch: { path: 'assets/models/kenney/misc/log.glb', size: 0.55, y: -0.02, rotation: [0, 0.4, Math.PI / 2] },
+  wood: { path: 'assets/models/kenney/misc/log_stack.glb', size: 0.85 },
+  stone: { path: 'assets/models/kenney/rocks/rock_smallFlatA.glb', size: 0.55 },
+  iron_ore: { path: 'assets/models/kenney/rocks/rock_smallB.glb', size: 0.6 },
+  gold_ore: { path: 'assets/models/kenney/rocks/rock_smallC.glb', size: 0.6 },
+  sapling: { path: 'assets/models/kenney/plants/plant_bushSmall.glb', size: 0.65 },
+  flower_seed: { path: 'assets/models/kenney/plants/flower_redA.glb', size: 0.5 },
   fish_common: { path: FISH_MODEL_PATH, size: 0.55, rotation: [0, -Math.PI / 2, 0] },
   fish_crucian: { path: FISH_MODEL_PATH, size: 0.48, rotation: [0, -Math.PI / 2, 0] },
   fish_carp: { path: FISH_MODEL_PATH, size: 0.62, rotation: [0, -Math.PI / 2, 0] },
@@ -242,7 +242,7 @@ export function KenneyFlower({ variant = 0 }: { variant?: number }) {
 }
 
 export function KenneyGrass() {
-  const { scene } = useGLTF('/assets/models/kenney/plants/grass.glb');
+  const { scene } = useGLTF('assets/models/kenney/plants/grass.glb');
   const clone = useMemo(() => scene.clone(), [scene]);
   return <primitive object={clone} />;
 }

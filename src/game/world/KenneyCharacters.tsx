@@ -9,14 +9,14 @@ import { useGameStore } from '../../store/useGameStore.ts';
 type CharacterStyle = 'player' | 'mira' | 'tao' | 'lina';
 
 const ANIMAL_PATHS = {
-  cat: '/assets/models/kenney/animals/animal-cat.glb',
-  dog: '/assets/models/kenney/animals/animal-dog.glb',
+  cat: 'assets/models/kenney/animals/animal-cat.glb',
+  dog: 'assets/models/kenney/animals/animal-dog.glb',
 } as const;
 const CHARACTER_PATHS: Record<CharacterStyle, string> = {
-  player: '/assets/models/kenney/characters/character-a.glb',
-  mira: '/assets/models/kenney/characters/character-b.glb',
-  tao: '/assets/models/kenney/characters/character-c.glb',
-  lina: '/assets/models/kenney/characters/character-d.glb',
+  player: 'assets/models/kenney/characters/character-a.glb',
+  mira: 'assets/models/kenney/characters/character-b.glb',
+  tao: 'assets/models/kenney/characters/character-c.glb',
+  lina: 'assets/models/kenney/characters/character-d.glb',
 };
 (Object.values({ ...ANIMAL_PATHS, ...CHARACTER_PATHS }) as string[]).forEach((p) => useGLTF.preload(p));
 
