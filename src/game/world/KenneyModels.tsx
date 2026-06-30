@@ -130,7 +130,6 @@ const FURNITURE_CFG: Record<string, FurnitureCfg> = {
   furniture_lampTable: { path: 'assets/models/kenney/furniture/lampRoundTable.glb' },
   furniture_rugSquare: { path: 'assets/models/kenney/furniture/rugSquare.glb' },
 };
-Object.values(FURNITURE_CFG).forEach((c) => useGLTF.preload(c.path));
 
 // 自动居中：将 GLB 的 bounding box 底部中心对齐到原点，统一缩放
 const AUTO_SCALE = 2.0;
