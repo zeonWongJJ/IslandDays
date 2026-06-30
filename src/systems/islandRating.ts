@@ -22,21 +22,21 @@ export interface IslandRating {
 }
 
 const WEIGHTS = {
-  trees: 2,
-  flowers: 1.5,
-  paths: 0.8,
-  furniture: 1.2,
+  trees: 0.8,
+  flowers: 2,
+  paths: 1,
+  furniture: 0.5,
   donations: 3,
-  collection: 0.5,
-  npcs: 5,
-  drops: -0.3, // 负面：地上杂物
+  collection: 0.8,
+  npcs: 4,
+  drops: -0.5,
 };
 
-const STAR_THRESHOLDS = [0, 20, 50, 100, 180, 300];
+const STAR_THRESHOLDS = [0, 25, 60, 110, 180, 270];
 
 export function calculateIslandRating(data: SaveData): IslandRating {
   const factors: RatingFactors = {
-    trees: data.trees.filter((t) => t.state === 'intact').length,
+    trees: Math.min(30, data.trees.filter((t) => t.state === 'intact').length),
     flowers: data.plants.filter((p) => p.itemId === 'flower_seed' && p.stage >= 1).length,
     paths: data.paths.length,
     furniture: data.house.rooms.living.placed.length
@@ -44,7 +44,7 @@ export function calculateIslandRating(data: SaveData): IslandRating {
       + data.house.rooms.kitchen.placed.length,
     donations: Object.keys(data.museumDonations).length,
     collection: Object.keys(data.collection).length,
-    npcs: 3, // 固定 3 个 NPC
+    npcs: Object.values(data.npcAffinity).filter((affinity) => affinity > 0).length,
     drops: data.drops.length,
   };
 

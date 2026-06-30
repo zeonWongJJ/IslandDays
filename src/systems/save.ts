@@ -2,7 +2,7 @@
 // 所有需要跨刷新保留的状态都走 SaveData；运行期临时状态留在 store 的非持久字段。
 
 import { SAVE, type WeatherPattern } from '../config/constants.ts';
-import type { ItemId, FurnitureItemId, ToolId } from '../config/items.ts';
+import type { ClothingItemId, ItemId, FurnitureItemId, ToolId } from '../config/items.ts';
 
 export type Vec3 = [number, number, number];
 
@@ -22,6 +22,8 @@ export interface TreeData {
   fruitCount: number;
   /** 果实再生时间（游戏分钟），null 表示无果实或未成熟 */
   fruitReadyAt: number | null;
+  /** 玩家种植的果树成熟时间；null 表示已成熟或自然生成 */
+  maturityAt: number | null;
 }
 
 export interface DropData {
@@ -116,8 +118,10 @@ export interface SaveData {
     built: boolean;
     rooms: Record<string, RoomData>;
   };
-  /** 玩家当前所在场景：'island' 在岛上，'house' 在室内，'museum' 在博物馆。 */
-  scene: 'island' | 'house' | 'museum';
+  /** 玩家当前所在场景：'island' 在岛上，'house' 在室内，'museum' 在博物馆，'npchouse' 在 NPC 家中。 */
+  scene: 'island' | 'house' | 'museum' | 'npchouse';
+  /** 当前所在的 NPC 房屋 ID（scene='npchouse' 时有效） */
+  npcHouseId: string | null;
   clock: { day: number; minutes: number };
   npcAffinity: Record<string, number>;
   social: {
@@ -147,10 +151,10 @@ export interface SaveData {
   quests: import('./quest.ts').Quest[];
   /** 玩家服装 */
   clothing: {
-    hat: import('../config/items.ts').ItemId | null;
-    shirt: import('../config/items.ts').ItemId | null;
-    pants: import('../config/items.ts').ItemId | null;
-    shoes: import('../config/items.ts').ItemId | null;
+    hat: ClothingItemId | null;
+    shirt: ClothingItemId | null;
+    pants: ClothingItemId | null;
+    shoes: ClothingItemId | null;
   };
 }
 
@@ -293,6 +297,41 @@ const migrations: Record<number, Migration> = {
     ...d,
     clothing: (d as Loose).clothing ?? { hat: null, shirt: null, pants: null, shoes: null },
   }),
+  // v21：任务增加接受状态，大头菜市场增加周标识
+  21: (d) => {
+    const quests = Array.isArray((d as Loose).quests) ? (d as Loose).quests as Loose[] : [];
+    const market = (d as Loose).turnipMarket as Loose | null | undefined;
+    return {
+      ...d,
+      quests: quests.map((quest) => ({
+        ...quest,
+        accepted: (quest as { accepted?: boolean }).accepted ?? false,
+      })),
+      turnipMarket: market
+        ? {
+            ...market,
+            weekStartDay: (market as { weekStartDay?: number }).weekStartDay
+              ?? Math.max(0, Math.floor(Number(market.spoilAt ?? 0) / 1440) - 7),
+          }
+        : null,
+    };
+  },
+  22: (d) => {
+    const trees = Array.isArray((d as Loose).trees) ? (d as Loose).trees as Loose[] : [];
+    return {
+      ...d,
+      trees: trees.map((tree) => ({
+        ...tree,
+        maturityAt: (tree as { maturityAt?: number | null }).maturityAt ?? null,
+      })),
+    };
+  },
+  // v23：添加 npcHouseId
+  23: (d) => ({
+    ...d,
+    npcHouseId: (d as Loose).npcHouseId ?? null,
+    scene: ((d as Loose).scene === 'npchouse' ? 'npchouse' : (d as Loose).scene === 'house' ? 'house' : (d as Loose).scene === 'museum' ? 'museum' : 'island'),
+  }),
 };
 
 function isWeather(value: unknown): value is WeatherPattern {
@@ -345,6 +384,7 @@ export function defaultSave(): SaveData {
     swimming: false,
     quests: [],
     clothing: { hat: null, shirt: null, pants: null, shoes: null },
+    npcHouseId: null,
   };
 }
 

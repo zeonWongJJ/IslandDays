@@ -106,6 +106,34 @@ export type ItemId =
   | 'recipe_rugSquare';
 
 export type ToolId = 'axe' | 'fishingRod' | 'net' | 'shovel' | 'watering_can';
+export type ClothingSlot = 'hat' | 'shirt' | 'pants' | 'shoes';
+export type ClothingItemId =
+  | 'hat_red' | 'hat_blue' | 'hat_green'
+  | 'shirt_red' | 'shirt_blue' | 'shirt_green'
+  | 'pants_blue' | 'pants_brown' | 'pants_green'
+  | 'shoes_red' | 'shoes_blue' | 'shoes_brown';
+
+export const CLOTHING_BY_SLOT: Record<ClothingSlot, ClothingItemId[]> = {
+  hat: ['hat_red', 'hat_blue', 'hat_green'],
+  shirt: ['shirt_red', 'shirt_blue', 'shirt_green'],
+  pants: ['pants_blue', 'pants_brown', 'pants_green'],
+  shoes: ['shoes_red', 'shoes_blue', 'shoes_brown'],
+};
+
+export const CLOTHING_COLORS: Record<ClothingItemId, string> = {
+  hat_red: '#b74438',
+  hat_blue: '#426c9e',
+  hat_green: '#4f7d4a',
+  shirt_red: '#c85142',
+  shirt_blue: '#477daf',
+  shirt_green: '#4f8a63',
+  pants_blue: '#385f83',
+  pants_brown: '#70513b',
+  pants_green: '#47745b',
+  shoes_red: '#8f4038',
+  shoes_blue: '#304a70',
+  shoes_brown: '#4f3a2a',
+};
 
 export type FishItemId = 'fish_common' | 'fish_crucian' | 'fish_carp' | 'fish_bluegill' | 'fish_loach' | 'fish_salmon' | 'fish_mackerel' | 'fish_rare' | 'fish_mahi_mahi' | 'fish_legend';
 export type BugItemId = 'bug_common' | 'bug_cicada' | 'bug_beetle' | 'bug_dragonfly' | 'bug_moth' | 'bug_rare';

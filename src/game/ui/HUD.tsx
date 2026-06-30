@@ -13,21 +13,23 @@ export function HUD() {
   const house = useGameStore((s) => s.house);
   const museumDonations = useGameStore((s) => s.museumDonations);
   const collection = useGameStore((s) => s.collection);
+  const drops = useGameStore((s) => s.drops);
+  const npcAffinity = useGameStore((s) => s.npcAffinity);
   const rating = useMemo(() => {
     return calculateIslandRating({
-      version: 16,
+      version: 23,
       player: { name: '', pos: [0, 0, 0], yaw: 0, bells: 0 },
       inventory: {},
       tools: {},
       equipped: null,
       trees,
-      drops: [],
+      drops,
       fishSpots: [],
       bugs: [],
       house,
       scene: 'island',
       clock: { day: 0, minutes: 0 },
-      npcAffinity: {},
+      npcAffinity,
       social: { daily: {} },
       weather: 'clear',
       plants,
@@ -42,8 +44,9 @@ export function HUD() {
       swimming: false,
       quests: [],
       clothing: { hat: null, shirt: null, pants: null, shoes: null },
+      npcHouseId: null,
     });
-  }, [trees, plants, paths, house, museumDonations, collection]);
+  }, [trees, plants, paths, house, museumDonations, collection, drops, npcAffinity]);
 
   return (
     <div className="hud hud-top-left">

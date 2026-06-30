@@ -10,7 +10,7 @@ import { create } from 'zustand/react';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import { WORLD, TREE, AXE, CLOCK, WEATHER, SAVE, FISH, BUG, TOOL_USE, TOOL_TIER_DUR, HOUSE, ROOMS, MUSEUM, MINE, type RoomId } from '../config/constants.ts';
 import type { WeatherPattern } from '../config/constants.ts';
-import { ITEMS, TOOLS, type ItemId, type ToolId, type FurnitureItemId } from '../config/items.ts';
+import { CLOTHING_BY_SLOT, ITEMS, TOOLS, type ClothingItemId, type ClothingSlot, type ItemId, type ToolId, type FurnitureItemId } from '../config/items.ts';
 import {
   defaultSave,
   migrate as migrateSave,
@@ -97,7 +97,7 @@ interface GameState extends SaveData {
 
   // ───────── 动作 ─────────
   setPlayer: (pos: Vec3, yaw: number) => void;
-  addItem: (id: ItemId, amount: number) => void;
+  addItem: (id: ItemId, amount: number) => number;
   removeItem: (id: ItemId, amount: number) => boolean;
   addBells: (n: number) => void;
   spendBells: (n: number) => boolean;
@@ -147,7 +147,7 @@ interface GameState extends SaveData {
 
   // 换装
   /** 穿戴服装 */
-  equipClothing: (slot: 'hat' | 'shirt' | 'pants' | 'shoes', itemId: ItemId | null) => void;
+  equipClothing: (slot: ClothingSlot, itemId: ClothingItemId | null) => void;
 
   // 钓鱼
   /** 开始一次钓鱼（抛竿）。由 Player 在按 E 时调用。 */
@@ -212,6 +212,10 @@ interface GameState extends SaveData {
   placePath: (pos: Vec3) => void;
   removePath: (pathId: string) => void;
 
+  // NPC 房屋
+  enterNpcHouse: (npcId: NpcId) => void;
+  leaveNpcHouse: () => void;
+
   // 博物馆
   enterMuseum: () => void;
   leaveMuseum: () => void;
@@ -235,9 +239,10 @@ function bootstrap(): SaveData {
       const data = migrateSave(JSON.parse(stored));
       const w = generateWorld();
       const safePlayer = nearestWalkable(data.player.pos[0], data.player.pos[2]);
-      const playerPos: Vec3 = data.scene === 'house' ? [0, 0, 5.8] : data.scene === 'museum' ? [0, 0, 9] : [safePlayer[0], 0, safePlayer[2]];
+      const playerPos: Vec3 = data.scene === 'house' ? [0, 0, 5.8] : data.scene === 'museum' ? [0, 0, 9] : data.scene === 'npchouse' ? [0, 0, 4.5] : [safePlayer[0], 0, safePlayer[2]];
       return {
         ...data,
+        swimming: false,
         player: { ...data.player, pos: playerPos },
         trees: mergeById(data.trees, w.trees),
         fishSpots: mergeFishSpots(data.fishSpots, w.fishSpots),
@@ -305,13 +310,13 @@ export const useGameStore = create<GameState>()(
       setPlayer: (pos, yaw) =>
         set((s) => ({ player: { ...s.player, pos, yaw } })),
 
-      addItem: (id, amount) =>
-        set((s) => {
-          const cur = s.inventory[id] ?? 0;
-          const cap = ITEMS[id].stack;
-          const next = Math.min(cur + amount, cap);
-          return { inventory: { ...s.inventory, [id]: next } };
-        }),
+      addItem: (id, amount) => {
+        const s = get();
+        const cur = s.inventory[id] ?? 0;
+        const accepted = Math.max(0, Math.min(amount, ITEMS[id].stack - cur));
+        if (accepted > 0) set({ inventory: { ...s.inventory, [id]: cur + accepted } });
+        return accepted;
+      },
 
       removeItem: (id, amount) => {
         const cur = get().inventory[id] ?? 0;
@@ -426,14 +431,20 @@ export const useGameStore = create<GameState>()(
         if (!tree || !tree.fruit || tree.fruitCount <= 0) return;
         const fruitId = tree.fruit;
         const amount = tree.fruitCount;
-        get().addItem(fruitId, amount);
+        const accepted = get().addItem(fruitId, amount);
+        if (accepted <= 0) {
+          get().pushToast(`${ITEMS[fruitId].name}已满，先清理背包`);
+          return;
+        }
+        const remaining = amount - accepted;
         const fruitReadyAt = s.clock.day * CLOCK.minutesPerDay + s.clock.minutes + 1440; // 1 game day
         set({
           trees: s.trees.map((t) =>
-            t.id === treeId ? { ...t, fruitCount: 0, fruitReadyAt } : t,
+            t.id === treeId ? { ...t, fruitCount: remaining, fruitReadyAt: remaining > 0 ? null : fruitReadyAt } : t,
           ),
         });
-        get().pushToast(`摘了 ${amount} 个${ITEMS[fruitId].name}！`);
+        get().updateQuestProgress(fruitId, accepted);
+        get().pushToast(`摘了 ${accepted} 个${ITEMS[fruitId].name}！`);
       },
 
       pickupDrop: (dropId) => {
@@ -446,8 +457,15 @@ export const useGameStore = create<GameState>()(
           get().pushToast(`${ITEMS[drop.itemId].name}已满，无法拾取`);
           return;
         }
-        get().addItem(drop.itemId, drop.amount);
-        set({ drops: s.drops.filter((d) => d.id !== dropId) });
+        const accepted = get().addItem(drop.itemId, drop.amount);
+        if (accepted <= 0) return;
+        const remaining = drop.amount - accepted;
+        set({
+          drops: remaining > 0
+            ? s.drops.map((d) => d.id === dropId ? { ...d, amount: remaining } : d)
+            : s.drops.filter((d) => d.id !== dropId),
+        });
+        get().updateQuestProgress(drop.itemId, accepted);
       },
 
       regrowDue: () => {
@@ -455,11 +473,15 @@ export const useGameStore = create<GameState>()(
         const now = s.clock.day * CLOCK.minutesPerDay + s.clock.minutes;
         const anyDue = s.trees.some((t) => t.state === 'stump' && t.regrowAt !== null && t.regrowAt <= now);
         const anyFruitDue = s.trees.some((t) => t.state === 'intact' && t.fruit && t.fruitCount === 0 && t.fruitReadyAt !== null && t.fruitReadyAt <= now);
-        if (!anyDue && !anyFruitDue) return;
+        const anyMature = s.trees.some((t) => t.maturityAt !== null && t.maturityAt <= now);
+        if (!anyDue && !anyFruitDue && !anyMature) return;
         set({
           trees: s.trees.map((t) => {
             if (t.state === 'stump' && t.regrowAt !== null && t.regrowAt <= now) {
               return { ...t, state: 'intact', hp: TREE.maxHp, regrowAt: null };
+            }
+            if (t.maturityAt !== null && t.maturityAt <= now) {
+              return { ...t, maturityAt: null, fruitCount: Math.floor(Math.random() * 3) + 1 };
             }
             if (t.state === 'intact' && t.fruit && t.fruitCount === 0 && t.fruitReadyAt !== null && t.fruitReadyAt <= now) {
               const newCount = Math.floor(Math.random() * 3) + 1;
@@ -482,18 +504,19 @@ export const useGameStore = create<GameState>()(
           ),
         }));
         get().growPlants();
-        get().updateTurnipPrices();
         get().checkTurnipSpoil();
-        // 周日创建新的大头菜市场
         const dayOfWeek = nextClock.day % 7;
-        if (dayOfWeek === 0 && nextClock.minutes === 0) {
-          const rng = makeRng(nextClock.day * 1000);
-          const market = createTurnipMarket(nextClock.day, nextClock.minutes, rng);
+        const weekStartDay = nextClock.day - dayOfWeek;
+        const currentMarket = get().turnipMarket;
+        if (!currentMarket || currentMarket.weekStartDay !== weekStartDay) {
+          const rng = makeRng(weekStartDay * 1000);
+          const market = createTurnipMarket(weekStartDay, 0, rng);
           set({ turnipMarket: market });
-          get().pushToast('大头菜市场开门了！周日可以买大头菜');
+          if (dayOfWeek === 0) get().pushToast('大头菜市场开门了！今天可以买大头菜');
         }
-        // 每天生成新任务
-        if (nextClock.minutes === 0) {
+        get().updateTurnipPrices();
+        const quests = get().quests;
+        if (quests.length === 0 || quests.some((quest) => quest.day !== nextClock.day)) {
           const newQuests = [
             generateDailyQuest('mira', nextClock.day),
             generateDailyQuest('tao', nextClock.day),
@@ -624,10 +647,11 @@ export const useGameStore = create<GameState>()(
       buyTurnips: (qty) => {
         const s = get();
         const market = s.turnipMarket;
-        if (!market) {
+        if (!market || s.clock.day % 7 !== 0) {
           get().pushToast('周日才能买大头菜');
           return false;
         }
+        if (!Number.isInteger(qty) || qty <= 0) return false;
         const cost = market.buyPrice * qty;
         if (s.player.bells < cost) {
           get().pushToast(`铃钱不足（需要 ${cost} 铃）`);
@@ -658,6 +682,10 @@ export const useGameStore = create<GameState>()(
           get().pushToast('大头菜无法出售');
           return false;
         }
+        if (!Number.isInteger(qty) || qty <= 0 || s.clock.day % 7 === 0) {
+          get().pushToast('大头菜只能在周一至周六出售');
+          return false;
+        }
         const gain = market.sellPrice * qty;
         set({
           player: { ...s.player, bells: s.player.bells + gain },
@@ -669,17 +697,19 @@ export const useGameStore = create<GameState>()(
 
       updateTurnipPrices: () => {
         const s = get();
-        const market = s.turnipMarket;
+        let market = s.turnipMarket;
         if (!market) return;
         const now = s.clock.day * CLOCK.minutesPerDay + s.clock.minutes;
         if (now < market.nextPriceChange) return;
-        const rng = makeRng(s.clock.day * 1000 + s.clock.minutes);
-        const newSellPrice = Math.max(10, market.buyPrice + Math.floor((rng() - 0.5) * market.buyPrice * 0.8));
-        const nextPriceChange = market.nextPriceChange + CLOCK.minutesPerDay / 2;
-        set({
-          turnipMarket: { ...market, sellPrice: newSellPrice, nextPriceChange },
-        });
-        get().pushToast(`大头菜价格更新：${newSellPrice} 铃/个`);
+        while (now >= market.nextPriceChange && market.nextPriceChange < market.spoilAt) {
+          const rng = makeRng(Math.floor(market.nextPriceChange));
+          market = {
+            ...market,
+            sellPrice: Math.max(10, market.buyPrice + Math.floor((rng() - 0.5) * market.buyPrice * 0.8)),
+            nextPriceChange: market.nextPriceChange + CLOCK.minutesPerDay / 2,
+          };
+        }
+        set({ turnipMarket: market });
       },
 
       checkTurnipSpoil: () => {
@@ -720,15 +750,15 @@ export const useGameStore = create<GameState>()(
       acceptQuest: (questId) => {
         const s = get();
         const quest = s.quests.find((q) => q.id === questId);
-        if (!quest || quest.completed) return;
-        // 任务已经激活，直接接受
+        if (!quest || quest.accepted || quest.claimed) return;
+        set({ quests: s.quests.map((q) => q.id === questId ? { ...q, accepted: true } : q) });
         get().pushToast('接受任务！');
       },
 
       updateQuestProgress: (itemId, amount) => {
         const s = get();
         const updatedQuests = s.quests.map((q) => {
-          if (q.completed || q.target !== itemId) return q;
+          if (!q.accepted || q.completed || q.target !== itemId) return q;
           const newProgress = Math.min(q.progress + amount, q.required);
           const completed = newProgress >= q.required;
           if (completed && !q.completed) {
@@ -742,7 +772,7 @@ export const useGameStore = create<GameState>()(
       claimQuestReward: (questId) => {
         const s = get();
         const quest = s.quests.find((q) => q.id === questId);
-        if (!quest || !quest.completed || quest.claimed) return;
+        if (!quest || !quest.accepted || !quest.completed || quest.claimed) return;
         set({
           player: { ...s.player, bells: s.player.bells + quest.rewardBells },
           quests: s.quests.map((q) => q.id === questId ? { ...q, claimed: true } : q),
@@ -754,6 +784,7 @@ export const useGameStore = create<GameState>()(
       equipClothing: (slot, itemId) => {
         const s = get();
         if (itemId) {
+          if (!CLOTHING_BY_SLOT[slot].includes(itemId)) return;
           // 检查是否拥有该物品
           const have = s.inventory[itemId] ?? 0;
           if (have <= 0) {
@@ -796,6 +827,11 @@ export const useGameStore = create<GameState>()(
         const spot = s.fishSpots.find((f) => f.id === spotId);
         if (!spot) return;
         const itemId = rollFish(Math.random(), s.clock.day, s.clock.minutes, WEATHER.seasonStart);
+        if ((s.inventory[itemId] ?? 0) >= ITEMS[itemId].stack) {
+          set({ fishing: { phase: 'idle', spotId: null, prompt: null, reelingProgress: 0 } });
+          get().pushToast(`${ITEMS[itemId].name}已满，鱼儿被放回水里`);
+          return;
+        }
         const dur = s.tools.fishingRod ?? 0;
         const newDur = Math.max(0, dur - TOOL_USE.fishCost);
         const readyAt = s.clock.day * CLOCK.minutesPerDay + s.clock.minutes + FISH.cooldownMinutes;
@@ -806,6 +842,7 @@ export const useGameStore = create<GameState>()(
           fishing: { phase: 'idle', spotId: null, prompt: null, reelingProgress: 0 },
           collection: { ...s.collection, [itemId]: true as const },
         });
+        get().updateQuestProgress(itemId, 1);
         get().pushToast(`钓到了${ITEMS[itemId].name}！`);
       },
 
@@ -838,6 +875,10 @@ export const useGameStore = create<GameState>()(
           return;
         }
         const itemId = rollBug(Math.random(), s.clock.day, s.clock.minutes, WEATHER.seasonStart);
+        if ((s.inventory[itemId] ?? 0) >= ITEMS[itemId].stack) {
+          get().pushToast(`${ITEMS[itemId].name}已满，无法捕捉`);
+          return;
+        }
         const dur = s.tools.net ?? 0;
         if (dur <= 0) {
           get().pushToast('捕虫网坏了，去商店修理');
@@ -851,6 +892,7 @@ export const useGameStore = create<GameState>()(
           bugs: s.bugs.map((b) => (b.id === spotId ? { ...b, state: 'cooling', readyAt, fleeAt: null } : b)),
           collection: { ...s.collection, [itemId]: true as const },
         });
+        get().updateQuestProgress(itemId, 1);
         get().pushToast(`捕到了${ITEMS[itemId].name}！`);
       },
 
@@ -921,6 +963,34 @@ export const useGameStore = create<GameState>()(
           player: { ...s.player, pos: [hx, 0, hz + HOUSE.radius + 2], yaw: Math.PI },
         });
         get().pushToast('出门了');
+      },
+
+      enterNpcHouse: (npcId) => {
+        const s = get();
+        if (s.scene === 'npchouse') return;
+        const npc = npcById(npcId);
+        if (!npc) return;
+        set({
+          scene: 'npchouse',
+          npcHouseId: npcId,
+          player: { ...s.player, pos: [0, 0, 4.5], yaw: 0 },
+          fishing: { phase: 'idle', spotId: null, prompt: null, reelingProgress: 0 },
+        });
+        get().pushToast(`${npc.name}的家`);
+      },
+
+      leaveNpcHouse: () => {
+        const s = get();
+        if (s.scene !== 'npchouse') return;
+        const rawNpcId = s.npcHouseId;
+        const npc = rawNpcId ? npcById(rawNpcId as import('../config/npcs.ts').NpcId) : null;
+        const [hx, , hz] = npc ? npc.homePos : [0, 0, 0];
+        set({
+          scene: 'island',
+          npcHouseId: null,
+          player: { ...s.player, pos: [hx, 0, hz + 3.5], yaw: Math.PI },
+        });
+        get().pushToast('出来了');
       },
 
       placeFurniture: (itemId, pos, rotStep) => {
@@ -1253,15 +1323,16 @@ export const useGameStore = create<GameState>()(
               regrowAt: null,
               variant: Math.floor(Math.random() * 5), // 0-4 普通树模型
               fruit: fruitId,
-              fruitCount: 2,
+              fruitCount: 0,
               fruitReadyAt: null,
+              maturityAt: s.clock.day * CLOCK.minutesPerDay + s.clock.minutes + CLOCK.minutesPerDay * 3,
             };
             set({
               plants: newPlants,
               trees: [...s.trees, newTree],
               inventory: { ...s.inventory, [saplingId as ItemId]: (s.inventory[saplingId as ItemId] ?? 0) - 1 },
             });
-            get().pushToast(`种下了${ITEMS[saplingId as ItemId].name}，长出了一棵果树！`);
+            get().pushToast(`种下了${ITEMS[saplingId as ItemId].name}，三天后成熟`);
             return;
           }
         }
@@ -1309,10 +1380,15 @@ export const useGameStore = create<GameState>()(
         };
         const produceId = produceMap[spot.itemId];
         if (!produceId) { get().pushToast('没什么可收获的'); return; }
+        if ((s.inventory[produceId] ?? 0) >= ITEMS[produceId].stack) {
+          get().pushToast(`${ITEMS[produceId].name}已满，先清理背包`);
+          return;
+        }
         set({
           plants: s.plants.filter((p) => p.id !== spotId),
           inventory: { ...s.inventory, [produceId]: (s.inventory[produceId] ?? 0) + 1 },
         });
+        get().updateQuestProgress(produceId, 1);
         get().pushToast(`收获了${ITEMS[produceId].name}`);
       },
 
@@ -1335,6 +1411,10 @@ export const useGameStore = create<GameState>()(
         const rng = () => Math.random();
         const roll = rng();
         const itemId = roll < 0.5 ? 'stone' : roll < 0.8 ? 'iron_ore' : 'gold_ore';
+        if ((s.inventory[itemId] ?? 0) >= ITEMS[itemId].stack) {
+          get().pushToast(`${ITEMS[itemId].name}已满，先清理背包`);
+          return;
+        }
         const newDur = Math.max(0, dur - TOOL_USE.shovelCost);
         const readyAt = s.clock.day * CLOCK.minutesPerDay + s.clock.minutes + MINE.cooldownMinutes;
         set({
@@ -1342,6 +1422,7 @@ export const useGameStore = create<GameState>()(
           tools: { ...s.tools, shovel: newDur },
           inventory: { ...s.inventory, [itemId]: Math.min((s.inventory[itemId] ?? 0) + 1, ITEMS[itemId].stack) },
         });
+        get().updateQuestProgress(itemId, 1);
         get().pushToast(`采到了${ITEMS[itemId].name}！`);
       },
 
@@ -1486,9 +1567,10 @@ export const useGameStore = create<GameState>()(
         museumRewardClaimed: s.museumRewardClaimed,
         regionProgress: s.regionProgress,
         turnipMarket: s.turnipMarket,
-        swimming: s.swimming,
+        swimming: false,
         quests: s.quests,
         clothing: s.clothing,
+        npcHouseId: s.npcHouseId,
       }),
       migrate: migrateSave,
       merge: (persisted, current) => {

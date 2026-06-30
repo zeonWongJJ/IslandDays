@@ -60,6 +60,7 @@ export function generateWorld(seed = 20240618): GeneratedWorld {
     }
     if (!acceptsTreePlacement(x, z) || groundKind(x, z) !== 'grass' || blocksWalking(x, z)) continue;
 
+    const fruit = rng() < FRUIT_PROBABILITY ? FRUIT_TYPES[Math.floor(rng() * FRUIT_TYPES.length)] : null;
     trees.push({
       id: `tree-${i}`,
       pos: [x, 0, z],
@@ -67,9 +68,10 @@ export function generateWorld(seed = 20240618): GeneratedWorld {
       state: 'intact',
       regrowAt: null,
       variant: Math.floor(rng() * 9),
-      fruit: rng() < FRUIT_PROBABILITY ? FRUIT_TYPES[Math.floor(rng() * FRUIT_TYPES.length)] : null,
-      fruitCount: rng() < FRUIT_PROBABILITY ? Math.floor(rng() * 3) + 1 : 0,
+      fruit,
+      fruitCount: fruit ? Math.floor(rng() * 3) + 1 : 0,
       fruitReadyAt: null,
+      maturityAt: null,
     });
   }
 
@@ -98,6 +100,7 @@ export function generateWorld(seed = 20240618): GeneratedWorld {
       fruit: 'coconut',
       fruitCount: Math.floor(rng() * 2) + 1,
       fruitReadyAt: null,
+      maturityAt: null,
     });
   }
 

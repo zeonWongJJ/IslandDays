@@ -13,42 +13,54 @@ interface MountainRangeDef {
 }
 
 const MOUNTAIN_RANGES: MountainRangeDef[] = [
-  { angle: -0.35, distance: 210, scale: 1.0, color: '#74837a', snow: false, peaks: [11, 17, 13, 20] },
-  { angle: 0.95, distance: 225, scale: 1.06, color: '#687873', snow: true, peaks: [15, 22, 18, 25] },
-  { angle: 2.45, distance: 215, scale: 0.96, color: '#778477', snow: false, peaks: [12, 18, 14, 21] },
-  { angle: 4.05, distance: 230, scale: 1.04, color: '#697971', snow: true, peaks: [14, 23, 17, 26] },
-  { angle: 5.35, distance: 218, scale: 0.92, color: '#79867a', snow: false, peaks: [10, 16, 13, 19] },
+  { angle: -0.35, distance: 205, scale: 1.0, color: '#6f7f76', snow: false, peaks: [9, 14, 11, 16, 10] },
+  { angle: 0.95, distance: 218, scale: 1.04, color: '#65756f', snow: true, peaks: [12, 17, 14, 19, 13] },
+  { angle: 2.45, distance: 208, scale: 0.96, color: '#738176', snow: false, peaks: [10, 15, 12, 17, 11] },
+  { angle: 4.05, distance: 222, scale: 1.02, color: '#66766e', snow: true, peaks: [12, 18, 14, 20, 13] },
+  { angle: 5.35, distance: 212, scale: 0.94, color: '#748276', snow: false, peaks: [8, 13, 10, 15, 9] },
 ];
 
 function MountainRange({ def }: { def: MountainRangeDef }) {
   const range = useMemo(() => {
     const group = new THREE.Group();
-    const totalWidth = def.peaks.length * 21 * def.scale;
+    const totalWidth = def.peaks.length * 18 * def.scale;
     def.peaks.forEach((height, index) => {
-      const width = (25 + (index % 3) * 5) * def.scale;
-      const depth = (16 + ((index + 1) % 3) * 4) * def.scale;
-      const x = -totalWidth / 2 + index * 21 * def.scale;
+      const width = (22 + (index % 3) * 4) * def.scale;
+      const depth = (14 + ((index + 1) % 3) * 3) * def.scale;
+      const x = -totalWidth / 2 + index * 18 * def.scale;
       const peak = new THREE.Mesh(
-        new THREE.ConeGeometry(width * 0.55, height * def.scale, 6),
+        new THREE.IcosahedronGeometry(1, 1),
         new THREE.MeshStandardMaterial({
           color: index % 2 === 0 ? def.color : new THREE.Color(def.color).offsetHSL(0, 0.02, -0.055),
           flatShading: true,
           roughness: 1,
         }),
       );
-      peak.position.set(x, height * def.scale * 0.5 - 5.8, (index % 2) * 8 - 4);
-      peak.scale.z = depth / width;
+      peak.position.set(x, height * def.scale * 0.34 - 5.8, (index % 2) * 7 - 3.5);
+      peak.scale.set(width * 0.58, height * def.scale * 0.58, depth * 0.62);
       peak.rotation.y = index * 0.37;
+      peak.rotation.z = (index % 2 === 0 ? -1 : 1) * 0.08;
       group.add(peak);
 
-      if (def.snow && height >= 21) {
-        const capHeight = height * def.scale * 0.24;
+      const foothill = new THREE.Mesh(
+        new THREE.DodecahedronGeometry(1, 0),
+        new THREE.MeshStandardMaterial({
+          color: new THREE.Color(def.color).offsetHSL(0.01, 0.035, 0.035),
+          flatShading: true,
+          roughness: 1,
+        }),
+      );
+      foothill.position.set(x + width * 0.34, -3.5, peak.position.z + depth * 0.2);
+      foothill.scale.set(width * 0.52, height * 0.22, depth * 0.72);
+      group.add(foothill);
+
+      if (def.snow && height >= 17) {
         const cap = new THREE.Mesh(
-          new THREE.ConeGeometry(width * 0.23, capHeight, 6),
+          new THREE.IcosahedronGeometry(1, 1),
           new THREE.MeshStandardMaterial({ color: '#dce4df', flatShading: true, roughness: 0.94 }),
         );
-        cap.position.set(x, height * def.scale - capHeight * 0.53 - 5.8, peak.position.z);
-        cap.scale.z = depth / width;
+        cap.position.set(x, peak.position.y + height * 0.42, peak.position.z);
+        cap.scale.set(width * 0.22, height * 0.16, depth * 0.24);
         cap.rotation.y = peak.rotation.y;
         group.add(cap);
       }
@@ -135,6 +147,7 @@ function SailingShip({
   color: string;
 }) {
   const groupRef = useRef<THREE.Group>(null);
+  const hullGeometry = useMemo(() => createBoatHullGeometry(), []);
 
   useFrame((state) => {
     const group = groupRef.current;
@@ -149,20 +162,23 @@ function SailingShip({
 
   return (
     <group ref={groupRef} position={start} scale={scale} frustumCulled={false}>
-      <mesh position={[0, 0.28, 0]} scale={[1, 0.55, 1]}>
-        <cylinderGeometry args={[1.25, 1.7, 5.6, 8, 1, false, 0, Math.PI]} />
+      <mesh geometry={hullGeometry} position={[0, 0.18, 0]}>
         <meshStandardMaterial color={color} flatShading roughness={0.9} side={THREE.DoubleSide} />
       </mesh>
-      <mesh position={[0, 0.7, 0]}>
-        <boxGeometry args={[2.3, 0.18, 4.6]} />
+      <mesh position={[0, 0.72, 0.1]}>
+        <boxGeometry args={[2.15, 0.16, 4.05]} />
         <meshStandardMaterial color="#c69a63" flatShading roughness={1} />
+      </mesh>
+      <mesh position={[0, 1.08, 1.35]}>
+        <boxGeometry args={[1.55, 0.62, 1.05]} />
+        <meshStandardMaterial color="#d9c49d" flatShading roughness={1} />
       </mesh>
       <mesh position={[0, 3.2, 0]}>
         <cylinderGeometry args={[0.08, 0.11, 6.2, 7]} />
         <meshStandardMaterial color="#65442b" flatShading roughness={1} />
       </mesh>
-      <mesh position={[0.12, 3.45, 0.65]} rotation={[0, 0.12, 0]}>
-        <planeGeometry args={[3.4, 4.8]} />
+      <mesh position={[0.12, 3.4, 0.45]} rotation={[0, 0.12, 0]}>
+        <planeGeometry args={[3.0, 4.25]} />
         <meshStandardMaterial color="#f0e3c3" side={THREE.DoubleSide} flatShading roughness={0.96} />
       </mesh>
       <mesh position={[-0.08, 4.5, -1.3]} rotation={[0, -0.15, 0]}>
@@ -175,6 +191,25 @@ function SailingShip({
       </mesh>
     </group>
   );
+}
+
+function createBoatHullGeometry(): THREE.BufferGeometry {
+  const vertices = new Float32Array([
+    -1.25, 0.55, -2.05, 1.25, 0.55, -2.05, -0.72, -0.6, -1.7, 0.72, -0.6, -1.7,
+    -1.05, 0.55, 1.8, 1.05, 0.55, 1.8, -0.5, -0.45, 2.25, 0.5, -0.45, 2.25,
+  ]);
+  const indices = [
+    0, 2, 4, 2, 6, 4,
+    1, 5, 3, 3, 5, 7,
+    0, 1, 2, 1, 3, 2,
+    4, 6, 5, 5, 6, 7,
+    2, 3, 6, 3, 7, 6,
+  ];
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute('position', new THREE.BufferAttribute(vertices, 3));
+  geometry.setIndex(indices);
+  geometry.computeVertexNormals();
+  return geometry;
 }
 
 export function BackgroundScenery() {

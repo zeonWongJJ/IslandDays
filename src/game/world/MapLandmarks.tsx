@@ -1,6 +1,7 @@
 import { Fragment, useMemo } from 'react';
 import * as THREE from 'three';
 import { LANDMARKS } from '../../config/landmarks.ts';
+import { LowPolyBoat } from './BoatModel.tsx';
 import { groundHeight } from '../../systems/terrain.ts';
 import { KenneyBush, KenneyFence, KenneyLog, KenneyTree } from './KenneyModels.tsx';
 
@@ -456,20 +457,7 @@ function BeachedBoat() {
   const y = Math.max(yAt(boat.x, boat.z, 0.08), -1.02);
   return (
     <group position={[boat.x, y, boat.z]} rotation={[0, boat.rot, -0.08]}>
-      <mesh position={[0, 0.38, 0]} castShadow receiveShadow>
-        <cylinderGeometry args={[0.72, 1.0, 3.5, 8, 1, false, 0, Math.PI]} />
-        <meshStandardMaterial color="#b35d3c" flatShading roughness={0.88} side={THREE.DoubleSide} />
-      </mesh>
-      <mesh position={[0, 0.62, 0]} castShadow>
-        <boxGeometry args={[1.45, 0.16, 3.05]} />
-        <meshStandardMaterial color="#e1c692" flatShading roughness={1} />
-      </mesh>
-      {[-0.68, 0, 0.68].map((z) => (
-        <mesh key={z} position={[0, 0.82, z]} castShadow>
-          <boxGeometry args={[1.3, 0.12, 0.18]} />
-          <meshStandardMaterial color="#714126" flatShading roughness={1} />
-        </mesh>
-      ))}
+      <LowPolyBoat color="#b35d3c" deckColor="#e1c692" />
       <mesh position={[0.8, 0.7, -0.2]} rotation={[0.08, 0, Math.PI / 2]} castShadow>
         <cylinderGeometry args={[0.035, 0.045, 3.2, 6]} />
         <meshStandardMaterial color="#6a3f25" flatShading roughness={1} />

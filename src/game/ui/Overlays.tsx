@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useGameStore } from '../../store/useGameStore.ts';
 import type { ItemId } from '../../config/items.ts';
+import { getQuestDescription, getQuestTypeIcon } from '../../systems/quest.ts';
 
 function toastEmoji(text: string): string {
   if (/坏了|不够|满了|没有|失败/.test(text)) return '⚠️ ';
@@ -36,6 +37,9 @@ export function DialogueModal() {
   const giftNpc = useGameStore((s) => s.giftNpc);
   const inventory = useGameStore((s) => s.inventory);
   const npcAffinity = useGameStore((s) => s.npcAffinity);
+  const quests = useGameStore((s) => s.quests);
+  const acceptQuest = useGameStore((s) => s.acceptQuest);
+  const claimQuestReward = useGameStore((s) => s.claimQuestReward);
   const [showGifts, setShowGifts] = useState(false);
 
   if (!dialogue) return null;
@@ -45,6 +49,7 @@ export function DialogueModal() {
   const MAX_HEARTS = 5;
 
   const giftable = GIFT_SLOTS.filter((id) => (inventory[id] ?? 0) > 0);
+  const npcQuest = quests.find((q) => q.npcId === dialogue.npcId && !q.claimed);
 
   return (
     <div className="dialogue-wrap">
@@ -62,6 +67,37 @@ export function DialogueModal() {
             <span className="dialogue-aff-num">{aff}/100</span>
           </div>
           <div className="dialogue-text">{dialogue.text}</div>
+
+          {npcQuest && (
+            <div className="dialogue-quest">
+              <div className="dialogue-quest-title">
+                {getQuestTypeIcon(npcQuest.type)} 委托任务
+              </div>
+              <div className="dialogue-quest-desc">
+                {getQuestDescription(npcQuest)}
+              </div>
+              <div className="dialogue-quest-progress">
+                <div className="dialogue-quest-bar-bg">
+                  <div
+                    className="dialogue-quest-bar-fill"
+                    style={{ width: `${(npcQuest.progress / npcQuest.required) * 100}%` }}
+                  />
+                </div>
+                <span>{npcQuest.progress}/{npcQuest.required}</span>
+              </div>
+              {!npcQuest.accepted && (
+                <button className="dialogue-btn dialogue-quest-btn" onClick={() => acceptQuest(npcQuest.id)}>
+                  📋 接受委托
+                </button>
+              )}
+              {npcQuest.completed && (
+                <button className="dialogue-btn dialogue-quest-btn" onClick={() => { claimQuestReward(npcQuest.id); }}>
+                  🪙 领取奖励（{npcQuest.rewardBells} 铃）
+                </button>
+              )}
+            </div>
+          )}
+
           <div className="dialogue-actions">
             {!showGifts ? (
               <>

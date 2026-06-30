@@ -1,4 +1,5 @@
-import type { ReactNode } from 'react';
+import { useEffect, useRef, type ReactNode } from 'react';
+import * as THREE from 'three';
 import { KenneyBush, KenneyLog } from './KenneyModels.tsx';
 
 interface WindowSpec {
@@ -49,6 +50,7 @@ export function LowPolyBuilding({
   windows = [],
   children,
 }: BuildingProps) {
+  const buildingRef = useRef<THREE.Group>(null);
   const frontZ = depth / 2;
   const backZ = -depth / 2;
   const sideX = width / 2;
@@ -59,8 +61,29 @@ export function LowPolyBuilding({
   const roofY = wallHeight + roofHeight * 0.45;
   const sidingRows = Math.max(3, Math.floor(wallHeight / 0.55));
 
+  useEffect(() => {
+    buildingRef.current?.traverse((child) => {
+      if (!(child instanceof THREE.Mesh)) return;
+      const materials = Array.isArray(child.material) ? child.material : [child.material];
+      materials.forEach((material) => {
+        if (!(material instanceof THREE.MeshStandardMaterial) && !(material instanceof THREE.MeshBasicMaterial)) return;
+        if (material.userData.baseOpacity === undefined) {
+          material.userData.baseOpacity = material.opacity;
+          material.userData.baseTransparent = material.transparent;
+          material.userData.baseDepthWrite = material.depthWrite;
+        }
+        const baseOpacity = Number(material.userData.baseOpacity);
+        const faded = roofOpacity < 0.98;
+        material.transparent = faded || Boolean(material.userData.baseTransparent);
+        material.opacity = baseOpacity * roofOpacity;
+        material.depthWrite = faded ? false : Boolean(material.userData.baseDepthWrite);
+        material.needsUpdate = true;
+      });
+    });
+  }, [roofOpacity]);
+
   return (
-    <group>
+    <group ref={buildingRef}>
       <mesh position={[0, 0.08, 0]} receiveShadow>
         <boxGeometry args={[width + 0.8, 0.16, depth + 0.8]} />
         <meshStandardMaterial color={foundationColor} flatShading roughness={1} />

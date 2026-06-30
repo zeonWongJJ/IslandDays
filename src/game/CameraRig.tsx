@@ -85,7 +85,7 @@ export function CameraRig() {
     const dist = cameraDistanceRef.current;
     const scene = useGameStore.getState().scene;
 
-    if (scene === 'house' || scene === 'museum') {
+    if (scene === 'house' || scene === 'museum' || scene === 'npchouse') {
       // 室内：俯视稍高的半顶视角，便于看布局
       const h = scene === 'museum' ? 10 : 9;
       const d = Math.min(dist, 10);

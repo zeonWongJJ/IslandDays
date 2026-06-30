@@ -6,7 +6,7 @@ import { useGameStore } from '../../store/useGameStore.ts';
 import { groundHeight } from '../../systems/terrain.ts';
 import { useOcclusionOpacity } from '../controllers/useOcclusionOpacity.ts';
 import { useGameTimeRef } from '../useGameTimeRef.ts';
-import { KenneyNPC } from '../world/KenneyCharacters.tsx';
+import { KenneyNPC, type NpcActivity } from '../world/KenneyCharacters.tsx';
 import { BuildingYard, Chimney, LowPolyBuilding, Planters, PorchColumns } from '../world/BuildingKit.tsx';
 
 const NPC_CHARACTER_MAP: Record<string, number> = { mira: 1, tao: 2, lina: 3 };
@@ -32,7 +32,7 @@ export function NPCField() {
 function NPCHouse({ npc }: { npc: NpcDef }) {
   const [x, , z] = npc.homePos;
   const y = useMemo(() => groundHeight(x, z), [x, z]);
-  const roofOpacity = useOcclusionOpacity(x, z, 3.6, 0.34);
+  const roofOpacity = useOcclusionOpacity(x, z, 3.6, 0.16);
 
   return (
     <group position={[x, y, z]}>
@@ -76,9 +76,12 @@ function NPCHouse({ npc }: { npc: NpcDef }) {
 function NPC({ npc }: { npc: NpcDef }) {
   const groupRef = useRef<THREE.Group>(null);
   const movingRef = useRef(false);
+  const activityRef = useRef<NpcActivity>('idle');
+  const workPropRef = useRef<THREE.Group>(null);
+  const restPropRef = useRef<THREE.Group>(null);
   const gameTimeRef = useGameTimeRef();
 
-  useFrame(() => {
+  useFrame((state) => {
     const t = gameTimeRef.current;
     const pos = npcPositionAt(npc, t);
     const ahead = npcPositionAt(npc, t + 0.25);
@@ -87,11 +90,28 @@ function NPC({ npc }: { npc: NpcDef }) {
     const dx = ahead[0] - x;
     const dz = ahead[2] - z;
     movingRef.current = Math.hypot(dx, dz) > 0.015;
+    const hour = t / 60;
+    const waveCycle = (state.clock.elapsedTime + npc.homePos[0] * 0.7 + npc.homePos[2] * 0.3) % 14;
+    activityRef.current = movingRef.current
+      ? 'walk'
+      : waveCycle < 2.4
+        ? 'wave'
+        : hour >= 10 && hour < 16
+          ? 'work'
+          : hour < 8 || hour >= 18
+            ? 'rest'
+            : 'idle';
     const yaw = movingRef.current ? Math.atan2(dx, dz) : groupRef.current?.rotation.y ?? 0;
     if (groupRef.current) {
       groupRef.current.position.set(x, y, z);
       groupRef.current.rotation.set(0, yaw, 0);
     }
+    if (workPropRef.current) {
+      const working = activityRef.current === 'work';
+      workPropRef.current.visible = working;
+      workPropRef.current.rotation.z = working ? Math.sin(t * 0.22) * 0.08 : 0;
+    }
+    if (restPropRef.current) restPropRef.current.visible = activityRef.current === 'rest';
   });
 
   return (
@@ -103,10 +123,27 @@ function NPC({ npc }: { npc: NpcDef }) {
       <KenneyNPC
         characterIndex={NPC_CHARACTER_MAP[npc.id] ?? 0}
         movingRef={movingRef}
+        activityRef={activityRef}
         phaseOffset={npc.homePos[0] * 0.21 + npc.homePos[2] * 0.13}
         style={NPC_STYLE_MAP[npc.id]}
       />
-      <NpcWorkProp npcId={npc.id} />
+      <group ref={workPropRef}>
+        <NpcWorkProp npcId={npc.id} />
+      </group>
+      <group ref={restPropRef} position={[0, 0.18, -0.12]}>
+        <mesh position={[0, 0.16, 0]} castShadow receiveShadow>
+          <boxGeometry args={[0.72, 0.12, 0.52]} />
+          <meshStandardMaterial color="#8a603d" flatShading roughness={1} />
+        </mesh>
+        <mesh position={[-0.25, -0.05, 0]} castShadow>
+          <boxGeometry args={[0.1, 0.36, 0.1]} />
+          <meshStandardMaterial color="#604126" flatShading roughness={1} />
+        </mesh>
+        <mesh position={[0.25, -0.05, 0]} castShadow>
+          <boxGeometry args={[0.1, 0.36, 0.1]} />
+          <meshStandardMaterial color="#604126" flatShading roughness={1} />
+        </mesh>
+      </group>
     </group>
   );
 }

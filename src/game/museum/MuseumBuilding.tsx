@@ -9,7 +9,7 @@ export function MuseumBuilding() {
   const scene = useGameStore((s) => s.scene);
   const [x, , z] = MAP_LAYOUT.museum.pos;
   const y = useMemo(() => groundHeight(x, z), [x, z]);
-  const roofOpacity = useOcclusionOpacity(x, z, 5.6, 0.3);
+  const roofOpacity = useOcclusionOpacity(x, z, 5.6, 0.14);
 
   if (scene !== 'island') return null;
 

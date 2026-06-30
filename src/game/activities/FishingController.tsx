@@ -10,14 +10,27 @@ import { KenneyFishModel } from '../world/KenneyModels.tsx';
 
 const WATER_SURFACE_Y = -1.4;
 
-function FishModel({ pos, flopping }: { pos: THREE.Vector3; flopping?: boolean }) {
+function FishModel({ pos, flopping, caught }: { pos: THREE.Vector3; flopping?: boolean; caught?: boolean }) {
   const ref = useRef<THREE.Group>(null);
+  const caughtStart = useRef(0);
+  const wasCaught = useRef(false);
   useFrame((state) => {
     if (!ref.current) return;
-    ref.current.position.lerp(pos, 0.12);
+    if (caught && !wasCaught.current) caughtStart.current = state.clock.elapsedTime;
+    wasCaught.current = !!caught;
+    const target = pos.clone();
+    if (caught) {
+      const elapsed = state.clock.elapsedTime - caughtStart.current;
+      target.y += Math.sin(Math.min(1, elapsed / 1.2) * Math.PI) * 1.05;
+      target.x += Math.sin(elapsed * 6) * 0.16;
+    }
+    ref.current.position.lerp(target, caught ? 0.2 : 0.12);
     if (flopping) {
       ref.current.rotation.x = Math.sin(state.clock.elapsedTime * 20) * 0.4;
       ref.current.rotation.z = Math.sin(state.clock.elapsedTime * 15) * 0.3;
+    } else if (caught) {
+      ref.current.rotation.x = Math.sin(state.clock.elapsedTime * 16) * 0.55;
+      ref.current.rotation.z = Math.sin(state.clock.elapsedTime * 12) * 0.42;
     }
   });
   return (
@@ -27,11 +40,30 @@ function FishModel({ pos, flopping }: { pos: THREE.Vector3; flopping?: boolean }
   );
 }
 
-function Bobber({ pos, hooked }: { pos: THREE.Vector3; hooked: boolean }) {
+function Bobber({
+  pos,
+  from,
+  hooked,
+  casting,
+}: {
+  pos: THREE.Vector3;
+  from: THREE.Vector3;
+  hooked: boolean;
+  casting: boolean;
+}) {
   const ref = useRef<THREE.Mesh>(null);
+  const castStart = useRef(0);
+  const wasCasting = useRef(false);
   useFrame((state) => {
     if (!ref.current) return;
     const target = pos.clone();
+    if (casting && !wasCasting.current) castStart.current = state.clock.elapsedTime;
+    wasCasting.current = casting;
+    if (casting) {
+      const progress = Math.min(1, (state.clock.elapsedTime - castStart.current) / 0.72);
+      target.lerpVectors(from, pos, 1 - Math.pow(1 - progress, 2));
+      target.y += Math.sin(progress * Math.PI) * 1.15;
+    }
     if (hooked) {
       target.y -= 0.4;
       target.x += Math.sin(state.clock.elapsedTime * 25) * 0.05;
@@ -269,8 +301,17 @@ export function FishingController() {
         );
       })}
 
-      {bobberPos && <Bobber pos={bobberPos} hooked={fishing.phase === 'hooked'} />}
-      {showFish && fishPos && <FishModel pos={fishPos} flopping={fishFlopping} />}
+      {bobberPos && (
+        <Bobber
+          pos={bobberPos}
+          from={rodTip}
+          hooked={fishing.phase === 'hooked'}
+          casting={fishing.phase === 'casting'}
+        />
+      )}
+      {showFish && fishPos && (
+        <FishModel pos={fishPos} flopping={fishFlopping} caught={fishing.phase === 'caught'} />
+      )}
       {showLine && <FishingLine from={rodTip} to={bobberPos!} />}
       {fishing.phase === 'waiting' && waterPos && <FishShadow center={waterPos} />}
     </group>

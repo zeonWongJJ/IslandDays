@@ -4,7 +4,7 @@
 // 移动方向相对相机：W = 远离相机方向，A/D = 左右。
 // 相机 yaw 由 GameRefs.cameraYawRef 提供（鼠标拖拽改变）。
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, type RefObject } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import { useKeyboardControls } from '@react-three/drei';
 import * as THREE from 'three';
@@ -20,7 +20,7 @@ import {
 import { useGameRefs } from './controllers/gameRefsContext.ts';
 import { useGameTimeRef } from './useGameTimeRef.ts';
 import { findInteractionTarget, interactionHint } from './interactions.ts';
-import { blocksWalking, isOnBridge, nearestWalkable, walkingHeight } from '../systems/terrain.ts';
+import { blocksWalking, groundKind, isOnBridge, nearestWalkable, SWIM_HEIGHT, walkingHeight } from '../systems/terrain.ts';
 import { getStaticObstacles } from '../systems/staticObstacles.ts';
 import { acceptsTreePlacement } from '../systems/placement.ts';
 import { soundManager, initAudio } from '../systems/audio.ts';
@@ -74,6 +74,8 @@ export function Player() {
   const setCurrentRoom = useGameStore((s) => s.setCurrentRoom);
   const enterHouse = useGameStore((s) => s.enterHouse);
   const leaveHouse = useGameStore((s) => s.leaveHouse);
+  const enterNpcHouse = useGameStore((s) => s.enterNpcHouse);
+  const leaveNpcHouse = useGameStore((s) => s.leaveNpcHouse);
   const enterMuseum = useGameStore((s) => s.enterMuseum);
   const leaveMuseum = useGameStore((s) => s.leaveMuseum);
   const startPicking = useGameStore((s) => s.startPicking);
@@ -111,9 +113,27 @@ export function Player() {
   const footstepDist = useRef(0);
   const audioInited = useRef(false);
   const limbRefs = useRef<PlayerLimbRefs | null>(null);
+  const axeRef = useRef<THREE.Group>(null);
   const rodRef = useRef<THREE.Group>(null);
+  const netRef = useRef<THREE.Group>(null);
+  const shovelRef = useRef<THREE.Group>(null);
   const castStart = useRef(0);
   const lastFishingPhase = useRef('idle');
+  const diveRef = useRef({
+    active: false,
+    elapsed: 0,
+    duration: 0.68,
+    from: new THREE.Vector3(),
+    to: new THREE.Vector3(),
+  });
+  const swimMovingRef = useRef(false);
+  const swimBurstRef = useRef(0);
+  const toolActionRef = useRef({
+    kind: 'none' as 'none' | 'axe' | 'shovel' | 'net',
+    elapsed: 0,
+    duration: 0.46,
+    burst: 0,
+  });
 
   // 用 three 的 clock 取时间
   const { clock } = useThree();
@@ -160,7 +180,8 @@ export function Player() {
     const rz = -Math.sin(yaw);
     let mx = 0;
     let mz = 0;
-    if (!fishingNow && !placingNow && !dialogueActive) {
+    const diving = diveRef.current.active;
+    if (!fishingNow && !placingNow && !dialogueActive && !diving) {
       if (keys.forward) { mx += fx; mz += fz; }
       if (keys.back) { mx -= fx; mz -= fz; }
       if (keys.right) { mx += rx; mz += rz; }
@@ -170,8 +191,9 @@ export function Player() {
     tmpDir.set(mx, 0, mz);
     const moving = tmpDir.lengthSq() > 1e-4;
     if (moving) tmpDir.normalize();
+    swimMovingRef.current = swimming && moving && !diving;
 
-    const speed = keys.run ? WORLD.runSpeed : WORLD.walkSpeed;
+    const speed = swimming ? WORLD.walkSpeed * 0.62 : keys.run ? WORLD.runSpeed : WORLD.walkSpeed;
     tmpNext.copy(g.position).addScaledVector(tmpDir, speed * dt);
 
     if (curScene === 'island') {
@@ -259,16 +281,37 @@ export function Player() {
         }
       }
       const clamped = clampToWorld([tmpNext.x, 0, tmpNext.z]);
-      if (blocksWalking(clamped[0], clamped[2])) {
-        const safe = blocksWalking(g.position.x, g.position.z)
-          ? nearestWalkable(g.position.x, g.position.z)
-          : [g.position.x, walkingHeight(g.position.x, g.position.z), g.position.z];
-        tmpNext.set(safe[0], 0, safe[2]);
+      if (swimming) {
+        if (diveRef.current.active) {
+          const dive = diveRef.current;
+          dive.elapsed = Math.min(dive.duration, dive.elapsed + dt);
+          const progress = dive.elapsed / dive.duration;
+          const eased = 1 - Math.pow(1 - progress, 3);
+          g.position.lerpVectors(dive.from, dive.to, eased);
+          g.position.y += Math.sin(progress * Math.PI) * 0.62;
+          if (progress >= 1) {
+            dive.active = false;
+            g.position.copy(dive.to);
+          }
+        } else if (groundKind(clamped[0], clamped[2]) === 'water') {
+          tmpNext.set(clamped[0], SWIM_HEIGHT, clamped[2]);
+          g.position.set(tmpNext.x, SWIM_HEIGHT, tmpNext.z);
+        } else {
+          tmpNext.copy(g.position);
+          g.position.set(tmpNext.x, SWIM_HEIGHT, tmpNext.z);
+        }
       } else {
-        tmpNext.set(clamped[0], 0, clamped[2]);
+        if (blocksWalking(clamped[0], clamped[2])) {
+          const safe = blocksWalking(g.position.x, g.position.z)
+            ? nearestWalkable(g.position.x, g.position.z)
+            : [g.position.x, walkingHeight(g.position.x, g.position.z), g.position.z];
+          tmpNext.set(safe[0], 0, safe[2]);
+        } else {
+          tmpNext.set(clamped[0], 0, clamped[2]);
+        }
+        const gy = walkingHeight(tmpNext.x, tmpNext.z);
+        g.position.set(tmpNext.x, gy, tmpNext.z);
       }
-      const gy = walkingHeight(tmpNext.x, tmpNext.z);
-      g.position.set(tmpNext.x, gy, tmpNext.z);
     } else if (curScene === 'house') {
       // ── 室内：按当前房间边界 + y=0 ──
       const roomCfg = ROOMS[currentRoom];
@@ -278,6 +321,11 @@ export function Player() {
       g.position.set(tmpNext.x, 0, tmpNext.z);
     } else if (curScene === 'museum') {
       const half = MUSEUM.interiorSize / 2 - WORLD.playerRadius - 0.2;
+      tmpNext.x = THREE.MathUtils.clamp(tmpNext.x, -half, half);
+      tmpNext.z = THREE.MathUtils.clamp(tmpNext.z, -half, half);
+      g.position.set(tmpNext.x, 0, tmpNext.z);
+    } else if (curScene === 'npchouse') {
+      const half = 4.5;
       tmpNext.x = THREE.MathUtils.clamp(tmpNext.x, -half, half);
       tmpNext.z = THREE.MathUtils.clamp(tmpNext.z, -half, half);
       g.position.set(tmpNext.x, 0, tmpNext.z);
@@ -294,8 +342,51 @@ export function Player() {
       g.rotation.y = facing.current;
     }
 
-    // ── 行走动画：相位推进 + 身体上下颠簸 + 四肢摆动 ──
-    if (moving) {
+    // ── 行走 / 游泳动画 ──
+    const limbs = limbRefs.current;
+    const toolAction = toolActionRef.current;
+    if (toolAction.kind !== 'none') {
+      toolAction.elapsed = Math.min(toolAction.duration, toolAction.elapsed + dt);
+      if (toolAction.elapsed >= toolAction.duration) toolAction.kind = 'none';
+    }
+    if (diveRef.current.active && limbs) {
+      const dive = diveRef.current;
+      const progress = dive.elapsed / dive.duration;
+      const arc = Math.sin(progress * Math.PI);
+      limbs.bodyGroup.position.y = arc * 0.12;
+      limbs.bodyGroup.rotation.x = -0.35 - arc * 0.95;
+      limbs.bodyGroup.rotation.z *= 0.75;
+      limbs.legLeft.rotation.x = 0.25 + arc * 0.35;
+      limbs.legRight.rotation.x = 0.25 + arc * 0.35;
+      limbs.armLeft.rotation.x = -1.15 + progress * 0.45;
+      limbs.armRight.rotation.x = -1.15 + progress * 0.45;
+      limbs.armLeft.rotation.z = -0.28;
+      limbs.armRight.rotation.z = 0.28;
+    } else if (swimming && limbs) {
+      walkPhase.current += dt * (moving ? 7.5 : 4.2);
+      const phase = walkPhase.current;
+      const effort = moving ? 1 : 0.45;
+      limbs.bodyGroup.position.y = Math.sin(phase * 0.5) * 0.035;
+      limbs.bodyGroup.rotation.x += (-0.34 - limbs.bodyGroup.rotation.x) * Math.min(1, dt * 7);
+      limbs.bodyGroup.rotation.z = Math.sin(phase * 0.5) * 0.035;
+      limbs.legLeft.rotation.x = Math.sin(phase) * 0.38 * effort;
+      limbs.legRight.rotation.x = Math.sin(phase + Math.PI) * 0.38 * effort;
+      limbs.armLeft.rotation.x = Math.sin(phase) * 0.42 * effort - 0.35;
+      limbs.armRight.rotation.x = Math.sin(phase + Math.PI) * 0.42 * effort - 0.35;
+      limbs.armLeft.rotation.z = -0.72 + Math.sin(phase * 0.5) * 0.18;
+      limbs.armRight.rotation.z = 0.72 - Math.sin(phase * 0.5) * 0.18;
+    } else if (toolAction.kind !== 'none' && limbs) {
+      const progress = toolAction.elapsed / toolAction.duration;
+      const strike = Math.sin(progress * Math.PI);
+      limbs.bodyGroup.rotation.x = strike * 0.12;
+      limbs.bodyGroup.rotation.z = -strike * 0.09;
+      limbs.armRight.rotation.x = -1.0 + progress * 2.05;
+      limbs.armRight.rotation.z = 0.42 - progress * 0.52;
+      limbs.armLeft.rotation.x = -0.45 + strike * 0.35;
+      limbs.armLeft.rotation.z = -0.18;
+      limbs.legLeft.rotation.x *= 0.7;
+      limbs.legRight.rotation.x *= 0.7;
+    } else if (moving) {
       walkPhase.current += dt * (keys.run ? 14 : 9);
       const stepInterval = keys.run ? 0.6 : 0.7;
       footstepDist.current += speed * dt;
@@ -304,25 +395,29 @@ export function Player() {
         soundManager.play('footstep');
       }
       const swing = 0.5;
-      const limbs = limbRefs.current;
       if (limbs) {
         const bob = Math.abs(Math.sin(walkPhase.current)) * 0.08;
         limbs.bodyGroup.position.y = bob;
+        limbs.bodyGroup.rotation.x *= 0.75;
         limbs.bodyGroup.rotation.z = Math.sin(walkPhase.current) * 0.04;
         limbs.legLeft.rotation.x = Math.sin(walkPhase.current) * swing;
         limbs.legRight.rotation.x = Math.sin(walkPhase.current + Math.PI) * swing;
         limbs.armLeft.rotation.x = Math.sin(walkPhase.current + Math.PI) * swing * 0.8;
         limbs.armRight.rotation.x = Math.sin(walkPhase.current) * swing * 0.8;
+        limbs.armLeft.rotation.z *= 0.75;
+        limbs.armRight.rotation.z *= 0.75;
       }
     } else {
-      const limbs = limbRefs.current;
       if (limbs) {
         limbs.bodyGroup.position.y *= 0.85;
+        limbs.bodyGroup.rotation.x *= 0.8;
         limbs.bodyGroup.rotation.z *= 0.85;
         limbs.legLeft.rotation.x *= 0.8;
         limbs.legRight.rotation.x *= 0.8;
         limbs.armLeft.rotation.x *= 0.8;
         limbs.armRight.rotation.x *= 0.8;
+        limbs.armLeft.rotation.z *= 0.8;
+        limbs.armRight.rotation.z *= 0.8;
       }
     }
 
@@ -348,6 +443,20 @@ export function Player() {
       } else {
         rodG.rotation.x += (0.2 - rodG.rotation.x) * 0.05;
       }
+    }
+    const actionProgress = toolAction.elapsed / toolAction.duration;
+    const actionSwing = toolAction.kind === 'none' ? 0 : Math.sin(actionProgress * Math.PI);
+    if (axeRef.current) {
+      axeRef.current.rotation.x = 0.4 - actionSwing * 1.85;
+      axeRef.current.rotation.z = 0.3 + actionSwing * 0.48;
+    }
+    if (shovelRef.current) {
+      shovelRef.current.rotation.x = 0.4 - actionSwing * 1.45;
+      shovelRef.current.rotation.z = 0.3 + actionSwing * 0.35;
+    }
+    if (netRef.current) {
+      netRef.current.rotation.x = 0.2 - actionSwing * 1.55;
+      netRef.current.rotation.z = 0.2 + actionSwing * 0.6;
     }
 
     // ── 自动拾取掉落物 ──
@@ -424,6 +533,22 @@ export function Player() {
       } else if (useGameStore.getState().interactHint !== null) {
         setInteractHint(null);
       }
+    } else if (curScene === 'npchouse') {
+      const exitDist = Math.hypot(g.position.x - 0, g.position.z - 4.0);
+      const inExitZone = g.position.z >= 3.8 && Math.abs(g.position.x) <= 2.5;
+      if (inExitZone || exitDist <= 3.2) {
+        const hint = '按 E 离开';
+        if (useGameStore.getState().interactHint !== hint) setInteractHint(hint);
+        const eDown = !!keys.interact;
+        const ePrev = !!prevKeys.current.interact;
+        if (eDown && !ePrev) {
+          leaveNpcHouse();
+          syncPlayerObjectFromStore();
+          soundManager.play('door');
+        }
+      } else if (useGameStore.getState().interactHint !== null) {
+        setInteractHint(null);
+      }
     } else if (curScene === 'museum') {
       // 博物馆：走到门口（前墙）按 E 出门，近柜台按 E 打开捐赠面板
       const exitZ = MUSEUM.interiorSize / 2 - 0.6;
@@ -468,10 +593,11 @@ export function Player() {
         paths,
         rocks,
         minutes: tRef.current,
+        swimming,
       });
 
       if (target) {
-        const hint = interactionHint(target, equipped);
+        const hint = interactionHint(target, equipped, swimming);
         if (useGameStore.getState().interactHint !== hint) setInteractHint(hint);
 
         const eDown = !!keys.interact;
@@ -486,6 +612,7 @@ export function Player() {
                 harvestFruit(target.id);
                 soundManager.play('pickup');
               } else {
+                toolActionRef.current = { kind: 'axe', elapsed: 0, duration: 0.46, burst: 1 };
                 chopTree(target.id);
                 soundManager.play('chop');
               }
@@ -494,6 +621,7 @@ export function Player() {
             else if (target.kind === 'fish') { startFishing(target.id); soundManager.play('cast'); }
             else if (target.kind === 'npc') talkToNpc(target.id);
             else if (target.kind === 'animal') interactWithAnimal(target.id);
+            else if (target.kind === 'npcHouse') { enterNpcHouse(target.id); soundManager.play('door'); }
             else if (target.kind === 'shop') { setShopOpen(true); soundManager.play('shopBell'); }
             else if (target.kind === 'museum') {
               enterMuseum();
@@ -519,7 +647,9 @@ export function Player() {
               }
             }
             else if (target.kind === 'rock') {
+              toolActionRef.current = { kind: 'shovel', elapsed: 0, duration: 0.5, burst: 1 };
               mineRock(target.id);
+              soundManager.play('mine');
             }
             else if (target.kind === 'path') {
               removePath(target.id);
@@ -527,7 +657,18 @@ export function Player() {
             else if (target.kind === 'water') {
               if (swimming) {
                 stopSwimming();
+                diveRef.current.active = false;
+                swimBurstRef.current = 1;
+                g.position.set(target.pos[0], walkingHeight(target.pos[0], target.pos[1]), target.pos[1]);
               } else {
+                const targetYaw = Math.atan2(target.pos[0] - g.position.x, target.pos[1] - g.position.z);
+                facing.current = targetYaw;
+                g.rotation.y = targetYaw;
+                diveRef.current.active = true;
+                diveRef.current.elapsed = 0;
+                diveRef.current.from.copy(g.position);
+                diveRef.current.to.set(target.pos[0], SWIM_HEIGHT, target.pos[1]);
+                swimBurstRef.current = 1;
                 startSwimming();
               }
             }
@@ -540,6 +681,7 @@ export function Player() {
               const b = bugs.find((x) => x.id === target.id);
               const distR = b ? Math.hypot(g.position.x - b.pos[0], g.position.z - b.pos[2]) / BUG.catchRadius : 1;
               const missChance = distR > 0.6 ? 0.35 : 0.05;
+              toolActionRef.current = { kind: 'net', elapsed: 0, duration: 0.42, burst: 1 };
               soundManager.play('netSwing');
               if (Math.random() < missChance) missBug(target.id);
               else catchBug(target.id);
@@ -621,10 +763,17 @@ export function Player() {
       </mesh>
 
       <KenneyPlayer characterIndex={0} limbRefs={limbRefs} />
+      <SwimmingWaterFX
+        playerRef={groupRef}
+        activeRef={{ current: swimming }}
+        movingRef={swimMovingRef}
+        burstRef={swimBurstRef}
+      />
+      <ToolImpactFX actionRef={toolActionRef} />
 
       {/* 装备的工具：根据 equipped 显示（跟随身体颠簸） */}
-      {equipped === 'axe' && (
-        <group position={[0.4, 1.0, 0.25]} rotation={[0.4, 0, 0.3]}>
+      {!swimming && equipped === 'axe' && (
+        <group ref={axeRef} position={[0.4, 1.0, 0.25]} rotation={[0.4, 0, 0.3]}>
           <mesh castShadow>
             <cylinderGeometry args={[0.04, 0.04, 0.9, 8]} />
             <meshStandardMaterial color="#8a5a2b" flatShading />
@@ -635,7 +784,7 @@ export function Player() {
           </mesh>
         </group>
       )}
-      {equipped === 'fishingRod' && (
+      {!swimming && equipped === 'fishingRod' && (
         <group ref={rodRef} position={[0.35, 1.0, 0.2]} rotation={[0.2, 0, 0.2]}>
           <mesh castShadow>
             <cylinderGeometry args={[0.025, 0.025, 1.4, 8]} />
@@ -643,8 +792,8 @@ export function Player() {
           </mesh>
         </group>
       )}
-      {equipped === 'net' && (
-        <group position={[0.4, 1.0, 0.2]} rotation={[0.2, 0, 0.2]}>
+      {!swimming && equipped === 'net' && (
+        <group ref={netRef} position={[0.4, 1.0, 0.2]} rotation={[0.2, 0, 0.2]}>
           <mesh castShadow>
             <cylinderGeometry args={[0.03, 0.03, 1.0, 8]} />
             <meshStandardMaterial color="#7a5a2a" flatShading />
@@ -655,8 +804,8 @@ export function Player() {
           </mesh>
         </group>
       )}
-      {equipped === 'shovel' && (
-        <group position={[0.4, 1.0, 0.2]} rotation={[0.4, 0, 0.3]}>
+      {!swimming && equipped === 'shovel' && (
+        <group ref={shovelRef} position={[0.4, 1.0, 0.2]} rotation={[0.4, 0, 0.3]}>
           <mesh castShadow>
             <cylinderGeometry args={[0.035, 0.035, 1.0, 8]} />
             <meshStandardMaterial color="#7a5a2a" flatShading />
@@ -667,6 +816,154 @@ export function Player() {
           </mesh>
         </group>
       )}
+    </group>
+  );
+}
+
+function ToolImpactFX({
+  actionRef,
+}: {
+  actionRef: RefObject<{ kind: 'none' | 'axe' | 'shovel' | 'net'; elapsed: number; duration: number; burst: number }>;
+}) {
+  const rootRef = useRef<THREE.Group>(null);
+  const particleRefs = useRef<Array<THREE.Mesh | null>>([]);
+  const flashRef = useRef<THREE.Mesh>(null);
+  const particles = useMemo(
+    () => Array.from({ length: 9 }, (_, index) => ({
+      angle: (index / 9) * Math.PI * 2,
+      speed: 0.55 + (index % 4) * 0.16,
+      lift: 0.35 + (index % 3) * 0.14,
+    })),
+    [],
+  );
+
+  useFrame((_, dt) => {
+    const root = rootRef.current;
+    if (!root) return;
+    const action = actionRef.current;
+    action.burst = Math.max(0, action.burst - dt * 2.6);
+    const progress = 1 - action.burst;
+    root.visible = action.burst > 0;
+    if (!root.visible) return;
+    root.position.set(0, action.kind === 'net' ? 1.25 : 0.48, 0.82);
+    particleRefs.current.forEach((particle, index) => {
+      if (!particle) return;
+      const config = particles[index];
+      particle.position.set(
+        Math.cos(config.angle) * config.speed * progress,
+        Math.sin(progress * Math.PI) * config.lift,
+        Math.sin(config.angle) * config.speed * progress,
+      );
+      particle.rotation.set(progress * 8, config.angle, progress * 5);
+      const size = Math.max(0, action.burst) * (action.kind === 'net' ? 0.7 : 1);
+      particle.scale.setScalar(size);
+      const material = particle.material as THREE.MeshBasicMaterial;
+      material.color.set(action.kind === 'axe' ? '#d9a45f' : action.kind === 'shovel' ? '#ffe29a' : '#dffbff');
+    });
+    if (flashRef.current) {
+      flashRef.current.visible = action.kind === 'net';
+      flashRef.current.scale.setScalar(0.45 + progress * 1.15);
+      (flashRef.current.material as THREE.MeshBasicMaterial).opacity = action.burst * 0.42;
+    }
+  });
+
+  return (
+    <group ref={rootRef} visible={false}>
+      {particles.map((_, index) => (
+        <mesh key={index} ref={(mesh) => { particleRefs.current[index] = mesh; }}>
+          <tetrahedronGeometry args={[0.075, 0]} />
+          <meshBasicMaterial color="#ffffff" transparent opacity={0.88} depthWrite={false} />
+        </mesh>
+      ))}
+      <mesh ref={flashRef} rotation={[-Math.PI / 2, 0, 0]}>
+        <ringGeometry args={[0.22, 0.3, 20]} />
+        <meshBasicMaterial color="#dffbff" transparent opacity={0} depthWrite={false} side={THREE.DoubleSide} />
+      </mesh>
+    </group>
+  );
+}
+
+function SwimmingWaterFX({
+  playerRef,
+  activeRef,
+  movingRef,
+  burstRef,
+}: {
+  playerRef: RefObject<THREE.Group | null>;
+  activeRef: RefObject<boolean>;
+  movingRef: RefObject<boolean>;
+  burstRef: RefObject<number>;
+}) {
+  const rootRef = useRef<THREE.Group>(null);
+  const ringRefs = useRef<Array<THREE.Mesh | null>>([]);
+  const dropRefs = useRef<Array<THREE.Mesh | null>>([]);
+  const phaseRef = useRef(0);
+  const drops = useMemo(
+    () => Array.from({ length: 10 }, (_, index) => ({
+      angle: (index / 10) * Math.PI * 2 + (index % 3) * 0.24,
+      radius: 0.38 + (index % 4) * 0.09,
+      height: 0.28 + (index % 3) * 0.12,
+      delay: (index % 5) * 0.055,
+    })),
+    [],
+  );
+
+  useFrame((_, dt) => {
+    const root = rootRef.current;
+    const player = playerRef.current;
+    if (!root || !player) return;
+    root.position.y = SWIM_HEIGHT - player.position.y + 0.035;
+    phaseRef.current += dt * (movingRef.current ? 1.9 : 0.72);
+    burstRef.current = Math.max(0, burstRef.current - dt * 1.35);
+    const burst = burstRef.current;
+    const visible = activeRef.current || burst > 0;
+    root.visible = visible;
+    if (!visible) return;
+
+    ringRefs.current.forEach((ring, index) => {
+      if (!ring) return;
+      const cycle = (phaseRef.current + index * 0.34) % 1;
+      const burstScale = burst > 0 ? (1 - burst) * 0.75 : 0;
+      const scale = 0.45 + cycle * (movingRef.current ? 1.05 : 0.68) + burstScale;
+      ring.scale.setScalar(scale);
+      const material = ring.material as THREE.MeshBasicMaterial;
+      material.opacity = Math.max(0, (1 - cycle) * (movingRef.current ? 0.42 : 0.22) + burst * 0.36);
+    });
+
+    const progress = 1 - burst;
+    dropRefs.current.forEach((drop, index) => {
+      if (!drop) return;
+      const config = drops[index];
+      const local = THREE.MathUtils.clamp((progress - config.delay) / (1 - config.delay), 0, 1);
+      const radius = config.radius * (0.45 + local);
+      drop.position.set(
+        Math.cos(config.angle) * radius,
+        Math.sin(local * Math.PI) * config.height,
+        Math.sin(config.angle) * radius,
+      );
+      const scale = burst > 0 && local < 1 ? 0.55 + Math.sin(local * Math.PI) * 0.65 : 0;
+      drop.scale.setScalar(scale);
+    });
+  });
+
+  return (
+    <group ref={rootRef}>
+      {[0, 1, 2].map((index) => (
+        <mesh
+          key={`swim-ring-${index}`}
+          ref={(mesh) => { ringRefs.current[index] = mesh; }}
+          rotation={[-Math.PI / 2, 0, 0]}
+        >
+          <torusGeometry args={[0.48, 0.035, 6, 28]} />
+          <meshBasicMaterial color="#d9f5ff" transparent opacity={0} depthWrite={false} />
+        </mesh>
+      ))}
+      {drops.map((_, index) => (
+        <mesh key={`swim-drop-${index}`} ref={(mesh) => { dropRefs.current[index] = mesh; }}>
+          <sphereGeometry args={[0.055, 6, 5]} />
+          <meshBasicMaterial color="#dff8ff" transparent opacity={0.78} depthWrite={false} />
+        </mesh>
+      ))}
     </group>
   );
 }

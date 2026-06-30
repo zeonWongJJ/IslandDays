@@ -134,12 +134,13 @@ export function DayNight() {
       scene.background = skyColor.current.clone();
     }
     if (!fogRef.current) {
-      fogRef.current = new THREE.Fog(k.fog.clone(), WORLD.size * 0.64, WORLD.size * 1.65);
+      fogRef.current = new THREE.Fog(k.fog.clone(), WORLD.size * 0.5, WORLD.size * 1.42);
       scene.fog = fogRef.current;
     }
     fogRef.current.color.lerp(k.fog, Math.min(1, dt * 2));
-    const fogNear = isDay ? WORLD.size * 0.64 : WORLD.size * 0.52;
-    const fogFar = isDay ? WORLD.size * 1.65 : WORLD.size * 1.32;
+    const weatherFog = st.weather === 'clear' ? 1 : st.weather === 'cloudy' ? 0.92 : 0.78;
+    const fogNear = (isDay ? WORLD.size * 0.5 : WORLD.size * 0.42) * weatherFog;
+    const fogFar = (isDay ? WORLD.size * 1.42 : WORLD.size * 1.2) * weatherFog;
     fogRef.current.near = THREE.MathUtils.lerp(fogRef.current.near, fogNear, dt * 1.5);
     fogRef.current.far = THREE.MathUtils.lerp(fogRef.current.far, fogFar, dt * 1.5);
   });

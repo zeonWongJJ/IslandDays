@@ -69,6 +69,7 @@ class SoundManager {
     switch (name) {
       case 'footstep': this.playFootstep(); break;
       case 'chop': this.playChop(); break;
+      case 'mine': this.playMine(); break;
       case 'pickup': this.playPickup(); break;
       case 'cast': this.playCast(); break;
       case 'bite': this.playBite(); break;
@@ -123,6 +124,25 @@ class SoundManager {
       s.connect(f).connect(gn);
       s.start();
     }, 30);
+  }
+
+  private playMine() {
+    const ctx = this.ensure();
+    const buf = this.tone(150, 0.11, 0.72);
+    const src = ctx.createBufferSource();
+    src.buffer = buf;
+    const g = this.gain(0.3, 0.11);
+    src.connect(g);
+    src.start();
+    const n = this.noise(0.08, 0.45);
+    const noiseSrc = ctx.createBufferSource();
+    noiseSrc.buffer = n;
+    const filter = ctx.createBiquadFilter();
+    filter.type = 'highpass';
+    filter.frequency.value = 1800;
+    const noiseGain = this.gain(0.14, 0.08);
+    noiseSrc.connect(filter).connect(noiseGain);
+    noiseSrc.start();
   }
 
   // ── 拾取 ──

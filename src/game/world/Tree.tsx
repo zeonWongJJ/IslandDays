@@ -20,6 +20,7 @@ export function Tree({ data }: { data: TreeData }) {
   const [x, , z] = data.pos;
   const y = useMemo(() => groundHeight(x, z), [x, z]);
   const day = useGameStore((s) => s.clock.day);
+  const minutes = useGameStore((s) => s.clock.minutes);
   const season = seasonOf(day);
   const floorDetails = useMemo(() => {
     const result: { x: number; z: number; s: number; rot: number; color: string }[] = [];
@@ -144,8 +145,16 @@ export function Tree({ data }: { data: TreeData }) {
   }
 
   const kenneyScale = 3.7 + (data.variant % 4) * 0.18;
+  const now = day * 1440 + minutes;
+  const growthScale = data.maturityAt === null
+    ? 1
+    : data.maturityAt - now > 2880
+      ? 0.42
+      : data.maturityAt - now > 1440
+        ? 0.64
+        : 0.82;
   const isPalm = data.variant >= 9;
-  const palmScale = isPalm ? kenneyScale * 0.85 : kenneyScale;
+  const palmScale = (isPalm ? kenneyScale * 0.85 : kenneyScale) * growthScale;
 
   return (
     <group position={[x, y, z]}>
@@ -174,6 +183,20 @@ export function Tree({ data }: { data: TreeData }) {
             <cylinderGeometry args={[0.34, 0.52, 0.28, 8]} />
             <meshStandardMaterial color="#604328" flatShading roughness={1} />
           </mesh>
+          {[0, 1, 2, 3].map((index) => {
+            const angle = index * Math.PI * 0.5 + data.variant * 0.17;
+            return (
+              <mesh
+                key={`root-${index}`}
+                position={[Math.cos(angle) * 0.34, 0.09, Math.sin(angle) * 0.34]}
+                rotation={[0, -angle, -0.22]}
+                castShadow
+              >
+                <boxGeometry args={[0.12, 0.12, 0.62]} />
+                <meshStandardMaterial color="#604328" flatShading roughness={1} />
+              </mesh>
+            );
+          })}
           {isPalm && (() => {
             const positions: [number, number, number][] = [];
             let seed = data.variant * 9301 + Math.floor(x * 17) + Math.floor(z * 31);

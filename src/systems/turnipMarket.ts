@@ -4,6 +4,8 @@
 import { CLOCK } from '../config/constants.ts';
 
 export interface TurnipMarket {
+  /** 本周周日对应的日期编号 */
+  weekStartDay: number;
   /** 本周买入价（周日固定） */
   buyPrice: number;
   /** 当前卖出价（AM/PM 各变一次） */
@@ -20,7 +22,7 @@ export interface TurnipPriceHistory {
 }
 
 const BASE_BUY_PRICE = 90;
-const BUY_PRICE_RANGE = 20; // 80-100
+const BUY_PRICE_RANGE = 10; // 80-99
 
 export function generateBuyPrice(rng: () => number): number {
   return BASE_BUY_PRICE + Math.floor(rng() * BUY_PRICE_RANGE * 2) - BUY_PRICE_RANGE;
@@ -50,7 +52,7 @@ export function createTurnipMarket(day: number, minutes: number, rng: () => numb
   const daysUntilNextSunday = (7 - dayOfWeek) % 7 || 7;
   const spoilAt = (day + daysUntilNextSunday) * CLOCK.minutesPerDay;
   
-  return { buyPrice, sellPrice, nextPriceChange, spoilAt };
+  return { weekStartDay: day, buyPrice, sellPrice, nextPriceChange, spoilAt };
 }
 
 export function updateTurnipPrice(market: TurnipMarket, rng: () => number): TurnipMarket {

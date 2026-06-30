@@ -3,12 +3,22 @@ import { useEffect, useMemo, useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import type { MutableRefObject, RefObject } from 'react';
+import { CLOTHING_COLORS } from '../../config/items.ts';
+import { useGameStore } from '../../store/useGameStore.ts';
+
+type CharacterStyle = 'player' | 'mira' | 'tao' | 'lina';
 
 const ANIMAL_PATHS = {
   cat: '/assets/models/kenney/animals/animal-cat.glb',
   dog: '/assets/models/kenney/animals/animal-dog.glb',
 } as const;
-(Object.values(ANIMAL_PATHS) as string[]).forEach((p) => useGLTF.preload(p));
+const CHARACTER_PATHS: Record<CharacterStyle, string> = {
+  player: '/assets/models/kenney/characters/character-a.glb',
+  mira: '/assets/models/kenney/characters/character-b.glb',
+  tao: '/assets/models/kenney/characters/character-c.glb',
+  lina: '/assets/models/kenney/characters/character-d.glb',
+};
+(Object.values({ ...ANIMAL_PATHS, ...CHARACTER_PATHS }) as string[]).forEach((p) => useGLTF.preload(p));
 
 export interface PlayerLimbRefs {
   legLeft: THREE.Object3D;
@@ -17,8 +27,6 @@ export interface PlayerLimbRefs {
   armRight: THREE.Object3D;
   bodyGroup: THREE.Group;
 }
-
-type CharacterStyle = 'player' | 'mira' | 'tao' | 'lina';
 
 interface StyleConfig {
   skin: string;
@@ -42,139 +50,106 @@ interface CharacterModelProps {
 }
 
 function CharacterModel({ style, limbRefsRef }: CharacterModelProps) {
-  const cfg = STYLE[style];
+  const clothing = useGameStore((s) => s.clothing);
+  const { scene } = useGLTF(CHARACTER_PATHS[style]);
+  const cfg = useMemo(() => {
+    if (style !== 'player') return STYLE[style];
+    const base = STYLE.player;
+    return {
+      ...base,
+      shirt: clothing.shirt ? CLOTHING_COLORS[clothing.shirt] : base.shirt,
+      pants: clothing.pants ? CLOTHING_COLORS[clothing.pants] : base.pants,
+      shoes: clothing.shoes ? CLOTHING_COLORS[clothing.shoes] : base.shoes,
+      accent: clothing.hat ? CLOTHING_COLORS[clothing.hat] : base.accent,
+    };
+  }, [clothing, style]);
   const bodyRef = useRef<THREE.Group>(null);
-  const leftLegRef = useRef<THREE.Group>(null);
-  const rightLegRef = useRef<THREE.Group>(null);
-  const leftArmRef = useRef<THREE.Group>(null);
-  const rightArmRef = useRef<THREE.Group>(null);
+  const model = useMemo(() => {
+    const clone = scene.clone(true);
+    prepareScene(clone);
+    tintCharacterPart(clone, 'torso', cfg.shirt);
+    tintCharacterPart(clone, 'leg-left', cfg.pants);
+    tintCharacterPart(clone, 'leg-right', cfg.pants);
+    const box = new THREE.Box3().setFromObject(clone);
+    const size = box.getSize(new THREE.Vector3());
+    const center = box.getCenter(new THREE.Vector3());
+    const scale = 2.05 / Math.max(size.x, size.y, size.z, 0.001);
+    clone.position.set(-center.x, -box.min.y, -center.z);
+    return {
+      root: clone,
+      scale,
+      legLeft: findPart(clone, ['leg-left']),
+      legRight: findPart(clone, ['leg-right']),
+      armLeft: findPart(clone, ['arm-left']),
+      armRight: findPart(clone, ['arm-right']),
+    };
+  }, [cfg.pants, cfg.shirt, scene]);
 
   useEffect(() => {
-    if (!limbRefsRef || !bodyRef.current || !leftLegRef.current || !rightLegRef.current || !leftArmRef.current || !rightArmRef.current) return;
+    if (!limbRefsRef || !bodyRef.current || !model.legLeft || !model.legRight || !model.armLeft || !model.armRight) return;
     limbRefsRef.current = {
-      legLeft: leftLegRef.current,
-      legRight: rightLegRef.current,
-      armLeft: leftArmRef.current,
-      armRight: rightArmRef.current,
+      legLeft: model.legLeft,
+      legRight: model.legRight,
+      armLeft: model.armLeft,
+      armRight: model.armRight,
       bodyGroup: bodyRef.current,
     };
     return () => {
       limbRefsRef.current = null;
     };
-  }, [limbRefsRef]);
+  }, [limbRefsRef, model]);
 
   return (
     <group ref={bodyRef}>
-      <group ref={leftLegRef} position={[-0.16, 0.62, 0]}>
-        <Leg color={cfg.pants} shoeColor={cfg.shoes} />
+      <group scale={model.scale}>
+        <primitive object={model.root} />
       </group>
-      <group ref={rightLegRef} position={[0.16, 0.62, 0]}>
-        <Leg color={cfg.pants} shoeColor={cfg.shoes} />
-      </group>
-
-      <mesh position={[0, 1.08, 0]} scale={[1.05, 1, 0.78]} castShadow receiveShadow>
-        <capsuleGeometry args={[0.31, 0.36, 5, 8]} />
-        <meshStandardMaterial color={cfg.shirt} flatShading roughness={1} />
-      </mesh>
-      <mesh position={[0, 0.78, 0.205]} castShadow>
-        <boxGeometry args={[0.7, 0.14, 0.08]} />
-        <meshStandardMaterial color={cfg.accent} flatShading roughness={1} />
-      </mesh>
-
-      <group ref={leftArmRef} position={[-0.43, 1.25, 0]}>
-        <Arm color={cfg.skin} sleeveColor={cfg.shirt} flip={-1} />
-      </group>
-      <group ref={rightArmRef} position={[0.43, 1.25, 0]}>
-        <Arm color={cfg.skin} sleeveColor={cfg.shirt} flip={1} />
-      </group>
-
-      <mesh position={[0, 1.63, 0]} castShadow receiveShadow>
-        <sphereGeometry args={[0.27, 12, 10]} />
-        <meshStandardMaterial color={cfg.skin} flatShading roughness={0.92} />
-      </mesh>
-      <mesh position={[-0.28, 1.65, 0]} castShadow>
-        <sphereGeometry args={[0.065, 7, 5]} />
-        <meshStandardMaterial color={cfg.skin} flatShading roughness={0.92} />
-      </mesh>
-      <mesh position={[0.28, 1.65, 0]} castShadow>
-        <sphereGeometry args={[0.065, 7, 5]} />
-        <meshStandardMaterial color={cfg.skin} flatShading roughness={0.92} />
-      </mesh>
-      <mesh position={[0, 1.78, -0.035]} scale={[1, 0.58, 0.9]} castShadow>
-        <sphereGeometry args={[0.29, 10, 8]} />
-        <meshStandardMaterial color={cfg.hair} flatShading roughness={1} />
-      </mesh>
-      <Face />
-      <RoleDetails style={style} cfg={cfg} />
+      <RoleDetails style={style} cfg={cfg} showPlayerHat={style !== 'player' || clothing.hat !== null} />
+      {style === 'player' && (
+        <>
+          <mesh position={[-0.17, 0.13, 0.1]} castShadow>
+            <boxGeometry args={[0.23, 0.12, 0.34]} />
+            <meshStandardMaterial color={cfg.shoes} flatShading roughness={1} />
+          </mesh>
+          <mesh position={[0.17, 0.13, 0.1]} castShadow>
+            <boxGeometry args={[0.23, 0.12, 0.34]} />
+            <meshStandardMaterial color={cfg.shoes} flatShading roughness={1} />
+          </mesh>
+        </>
+      )}
     </group>
   );
 }
 
-function Leg({ color, shoeColor }: { color: string; shoeColor: string }) {
-  return (
-    <group>
-      <mesh position={[0, -0.28, 0]} castShadow>
-        <boxGeometry args={[0.2, 0.56, 0.22]} />
-        <meshStandardMaterial color={color} flatShading roughness={1} />
-      </mesh>
-      <mesh position={[0, -0.6, 0.05]} castShadow>
-        <boxGeometry args={[0.24, 0.12, 0.34]} />
-        <meshStandardMaterial color={shoeColor} flatShading roughness={1} />
-      </mesh>
-    </group>
-  );
+function tintCharacterPart(root: THREE.Object3D, name: string, color: string) {
+  const part = findPart(root, [name]);
+  part?.traverse((child) => {
+    if (!(child instanceof THREE.Mesh)) return;
+    const materials = Array.isArray(child.material) ? child.material : [child.material];
+    materials.forEach((material) => {
+      if (material instanceof THREE.MeshStandardMaterial || material instanceof THREE.MeshBasicMaterial) {
+        material.color.set(color);
+      }
+    });
+  });
 }
 
-function Arm({ color, sleeveColor, flip }: { color: string; sleeveColor: string; flip: 1 | -1 }) {
-  return (
-    <group rotation={[0, 0, flip * 0.08]}>
-      <mesh position={[0, -0.14, 0]} castShadow>
-        <boxGeometry args={[0.18, 0.34, 0.2]} />
-        <meshStandardMaterial color={sleeveColor} flatShading roughness={1} />
-      </mesh>
-      <mesh position={[0, -0.45, 0]} castShadow>
-        <boxGeometry args={[0.16, 0.34, 0.18]} />
-        <meshStandardMaterial color={color} flatShading roughness={0.95} />
-      </mesh>
-      <mesh position={[0, -0.66, 0.02]} castShadow>
-        <sphereGeometry args={[0.1, 8, 6]} />
-        <meshStandardMaterial color={color} flatShading roughness={0.95} />
-      </mesh>
-    </group>
-  );
-}
-
-function Face() {
-  return (
-    <group>
-      <mesh position={[-0.09, 1.65, 0.245]}>
-        <sphereGeometry args={[0.026, 6, 6]} />
-        <meshBasicMaterial color="#171717" />
-      </mesh>
-      <mesh position={[0.09, 1.65, 0.245]}>
-        <sphereGeometry args={[0.026, 6, 6]} />
-        <meshBasicMaterial color="#171717" />
-      </mesh>
-      <mesh position={[0, 1.56, 0.252]} scale={[1.35, 0.35, 0.3]}>
-        <sphereGeometry args={[0.028, 6, 6]} />
-        <meshBasicMaterial color="#7a3d34" />
-      </mesh>
-    </group>
-  );
-}
-
-function RoleDetails({ style, cfg }: { style: CharacterStyle; cfg: StyleConfig }) {
+function RoleDetails({ style, cfg, showPlayerHat }: { style: CharacterStyle; cfg: StyleConfig; showPlayerHat: boolean }) {
   if (style === 'player') {
     return (
       <group>
-        <mesh position={[0, 1.93, 0.02]} castShadow>
-          <cylinderGeometry args={[0.34, 0.31, 0.14, 12]} />
-          <meshStandardMaterial color={cfg.accent} flatShading roughness={1} />
-        </mesh>
-        <mesh position={[0, 1.88, 0.28]} castShadow>
-          <boxGeometry args={[0.62, 0.07, 0.2]} />
-          <meshStandardMaterial color={cfg.accent} flatShading roughness={1} />
-        </mesh>
+        {showPlayerHat && (
+          <>
+            <mesh position={[0, 1.93, 0.02]} castShadow>
+              <cylinderGeometry args={[0.34, 0.31, 0.14, 12]} />
+              <meshStandardMaterial color={cfg.accent} flatShading roughness={1} />
+            </mesh>
+            <mesh position={[0, 1.88, 0.28]} castShadow>
+              <boxGeometry args={[0.62, 0.07, 0.2]} />
+              <meshStandardMaterial color={cfg.accent} flatShading roughness={1} />
+            </mesh>
+          </>
+        )}
         <mesh position={[0, 1.06, -0.25]} castShadow>
           <boxGeometry args={[0.48, 0.58, 0.16]} />
           <meshStandardMaterial color="#586b88" flatShading roughness={1} />
@@ -235,6 +210,8 @@ interface CharacterParts {
   armRight: THREE.Object3D | null;
 }
 
+export type NpcActivity = 'idle' | 'walk' | 'wave' | 'work' | 'rest';
+
 function animateCharacterParts(parts: CharacterParts, phase: number, amount: number) {
   const legSwing = 0.48 * amount;
   const armSwing = 0.38 * amount;
@@ -256,50 +233,67 @@ export function KenneyPlayer({
 export function KenneyNPC({
   moving = false,
   movingRef,
+  activityRef,
   phaseOffset = 0,
   style = 'mira',
 }: {
   characterIndex: number;
   moving?: boolean;
   movingRef?: RefObject<boolean>;
+  activityRef?: RefObject<NpcActivity>;
   phaseOffset?: number;
   style?: Exclude<CharacterStyle, 'player'>;
 }) {
   const rootRef = useRef<THREE.Group>(null);
-  const legLeftRef = useRef<THREE.Object3D | null>(null);
-  const legRightRef = useRef<THREE.Object3D | null>(null);
-  const armLeftRef = useRef<THREE.Object3D | null>(null);
-  const armRightRef = useRef<THREE.Object3D | null>(null);
-  const npcLimbRefs = useMemo<MutableRefObject<PlayerLimbRefs | null>>(
-    () => ({
-      current: null,
-    }),
-    [],
-  );
-
-  useEffect(() => {
-    const limbs = npcLimbRefs.current;
-    legLeftRef.current = limbs?.legLeft ?? null;
-    legRightRef.current = limbs?.legRight ?? null;
-    armLeftRef.current = limbs?.armLeft ?? null;
-    armRightRef.current = limbs?.armRight ?? null;
-  }, [npcLimbRefs]);
+  const npcLimbRefs = useRef<PlayerLimbRefs | null>(null);
 
   useFrame((state) => {
+    const limbs = npcLimbRefs.current;
     const t = state.clock.elapsedTime + phaseOffset;
     const isMoving = movingRef?.current ?? moving;
-    animateCharacterParts(
-      {
-        legLeft: legLeftRef.current,
-        legRight: legRightRef.current,
-        armLeft: armLeftRef.current,
-        armRight: armRightRef.current,
-      },
-      t * (isMoving ? 7.2 : 2.4),
-      isMoving ? 1 : 0.08,
-    );
+    const activity = isMoving ? 'walk' : activityRef?.current ?? 'idle';
+    const parts = {
+      legLeft: limbs?.legLeft ?? null,
+      legRight: limbs?.legRight ?? null,
+      armLeft: limbs?.armLeft ?? null,
+      armRight: limbs?.armRight ?? null,
+    };
+    if (activity === 'walk') {
+      animateCharacterParts(parts, t * 7.2, 1);
+    } else if (activity === 'wave') {
+      if (parts.legLeft) parts.legLeft.rotation.x *= 0.82;
+      if (parts.legRight) parts.legRight.rotation.x *= 0.82;
+      if (parts.armLeft) {
+        parts.armLeft.rotation.x *= 0.8;
+        parts.armLeft.rotation.z *= 0.8;
+      }
+      if (parts.armRight) {
+        parts.armRight.rotation.x = -1.45 + Math.sin(t * 7) * 0.18;
+        parts.armRight.rotation.z = 0.55 + Math.sin(t * 7) * 0.16;
+      }
+    } else if (activity === 'work') {
+      if (parts.legLeft) parts.legLeft.rotation.x = Math.sin(t * 2.2) * 0.05;
+      if (parts.legRight) parts.legRight.rotation.x = Math.sin(t * 2.2 + Math.PI) * 0.05;
+      if (parts.armLeft) {
+        parts.armLeft.rotation.x = -0.55 + Math.sin(t * 3.4) * 0.32;
+        parts.armLeft.rotation.z = -0.18;
+      }
+      if (parts.armRight) {
+        parts.armRight.rotation.x = -0.8 + Math.sin(t * 3.4 + Math.PI) * 0.38;
+        parts.armRight.rotation.z = 0.18;
+      }
+    } else if (activity === 'rest') {
+      if (parts.legLeft) parts.legLeft.rotation.x += (0.68 - parts.legLeft.rotation.x) * 0.12;
+      if (parts.legRight) parts.legRight.rotation.x += (0.68 - parts.legRight.rotation.x) * 0.12;
+      if (parts.armLeft) parts.armLeft.rotation.x += (-0.22 - parts.armLeft.rotation.x) * 0.12;
+      if (parts.armRight) parts.armRight.rotation.x += (-0.22 - parts.armRight.rotation.x) * 0.12;
+    } else {
+      animateCharacterParts(parts, t * 2.4, 0.08);
+    }
     if (rootRef.current) {
-      rootRef.current.position.y = isMoving ? Math.abs(Math.sin(t * 7.2)) * 0.045 : Math.sin(t * 1.8) * 0.012;
+      const restOffset = activity === 'rest' ? -0.24 : 0;
+      rootRef.current.position.y = restOffset + (isMoving ? Math.abs(Math.sin(t * 7.2)) * 0.045 : Math.sin(t * 1.8) * 0.012);
+      rootRef.current.rotation.x = activity === 'rest' ? -0.08 : 0;
       rootRef.current.rotation.z = isMoving ? Math.sin(t * 7.2) * 0.03 : Math.sin(t * 1.2) * 0.006;
     }
   });

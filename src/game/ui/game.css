@@ -205,6 +205,13 @@ canvas { display: block; touch-action: none; }
 .dialogue-next:active { transform: scale(0.96); }
 .dialogue-affinity { font-size: 13px; margin-bottom: 4px; letter-spacing: 1px; }
 .dialogue-aff-num { font-size: 11px; color: #937a5a; margin-left: 6px; }
+.dialogue-quest { margin: 8px 0; padding: 8px 10px; background: #f8f3ea; border-radius: 8px; border: 1px solid var(--ui-border); }
+.dialogue-quest-title { font-size: 13px; font-weight: 600; color: var(--accent); margin-bottom: 3px; }
+.dialogue-quest-desc { font-size: 13px; color: var(--ui-fg); margin-bottom: 4px; }
+.dialogue-quest-progress { display: flex; align-items: center; gap: 6px; font-size: 12px; color: #6a5a42; }
+.dialogue-quest-bar-bg { flex: 1; height: 6px; background: #ddd5c8; border-radius: 3px; overflow: hidden; }
+.dialogue-quest-bar-fill { height: 100%; background: var(--accent); border-radius: 3px; transition: width 0.3s; }
+.dialogue-quest-btn { margin-top: 6px; width: 100%; }
 .dialogue-actions { margin-top: 10px; display: flex; gap: 8px; flex-wrap: wrap; }
 .dialogue-btn {
   border: 0; background: var(--accent); color: #fff; border-radius: 999px;
@@ -400,7 +407,13 @@ canvas { display: block; touch-action: none; }
 .panel-title .close:hover { color: #444; }
 
 /* 背包 */
-.inventory-panel { top: 80px; right: 14px; width: 240px; }
+.inventory-panel {
+  top: 80px;
+  right: 14px;
+  width: 300px;
+  max-height: calc(100vh - 110px);
+  overflow-y: auto;
+}
 .inv-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
 .inv-cell {
   background: rgba(255,255,255,0.6);
@@ -412,6 +425,36 @@ canvas { display: block; touch-action: none; }
   transition: background 0.12s, transform 0.1s;
 }
 .inv-cell:hover:not(.empty) { background: rgba(255,255,255,0.85); transform: translateY(-1px); }
+.wardrobe-area {
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid var(--ui-border);
+}
+.wardrobe-row {
+  display: grid;
+  grid-template-columns: 42px repeat(3, minmax(0, 1fr));
+  gap: 5px;
+  align-items: center;
+  margin-top: 6px;
+  font-size: 12px;
+}
+.wardrobe-row button {
+  min-width: 0;
+  padding: 5px 3px;
+  border: 1px solid var(--ui-border);
+  border-radius: 6px;
+  background: rgba(255,255,255,0.72);
+  font-size: 10px;
+  cursor: pointer;
+}
+.wardrobe-row button.active {
+  border-color: #d99b35;
+  background: #fff1c7;
+}
+.wardrobe-row button:disabled {
+  opacity: 0.38;
+  cursor: default;
+}
 
 /* 图鉴 */
 .collection-panel {
@@ -773,6 +816,44 @@ canvas { display: block; touch-action: none; }
 }
 .nookphone-map-hint {
   text-align: center; color: #8a8aaa; font-size: 13px; padding: 20px 0;
+}
+.quest-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.quest-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px;
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 8px;
+  background: rgba(255,255,255,0.06);
+  color: #e8e8f0;
+}
+.quest-main {
+  min-width: 0;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  font-size: 12px;
+}
+.quest-main small { color: #b8b8c8; }
+.quest-row button {
+  border: 0;
+  border-radius: 6px;
+  padding: 6px 8px;
+  background: #d99b35;
+  color: #1d1d24;
+  font-weight: 700;
+  cursor: pointer;
+}
+.quest-row button:disabled {
+  background: #4a4a5a;
+  color: #a8a8b8;
+  cursor: default;
 }
 
 /* 钓鱼提示 */

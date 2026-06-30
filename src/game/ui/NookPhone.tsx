@@ -4,8 +4,10 @@ import { formatClock } from '../../store/useGameStore.ts';
 import { CollectionPanel } from './CollectionPanel.tsx';
 import { SettingsPanel } from './SettingsPanel.tsx';
 import { currentEvent } from '../../config/events.ts';
+import { npcById } from '../../config/npcs.ts';
+import { getQuestDescription, getQuestTypeIcon } from '../../systems/quest.ts';
 
-type AppId = 'home' | 'map' | 'collection' | 'settings' | 'help';
+type AppId = 'home' | 'map' | 'collection' | 'quests' | 'settings' | 'help';
 
 interface AppDef {
   id: AppId;
@@ -16,6 +18,7 @@ interface AppDef {
 const APPS: AppDef[] = [
   { id: 'map', icon: '🗺️', label: '地图' },
   { id: 'collection', icon: '📖', label: '图鉴' },
+  { id: 'quests', icon: '📋', label: '委托' },
   { id: 'settings', icon: '⚙️', label: '设置' },
   { id: 'help', icon: '❓', label: '帮助' },
 ];
@@ -25,6 +28,9 @@ export function NookPhone({ onClose }: { onClose: () => void }) {
   const clock = useGameStore((s) => s.clock);
   const bells = useGameStore((s) => s.player.bells);
   const scene = useGameStore((s) => s.scene);
+  const quests = useGameStore((s) => s.quests);
+  const acceptQuest = useGameStore((s) => s.acceptQuest);
+  const claimQuestReward = useGameStore((s) => s.claimQuestReward);
   const ev = currentEvent(clock.day);
 
   const timeStr = formatClock(clock.minutes);
@@ -74,6 +80,42 @@ export function NookPhone({ onClose }: { onClose: () => void }) {
                 <span>⚙️ 设置</span>
               </div>
               <SettingsPanel onClose={() => setApp('home')} />
+            </div>
+          )}
+          {app === 'quests' && (
+            <div className="nookphone-app-page">
+              <div className="nookphone-app-header">
+                <button className="nookphone-back" onClick={() => setApp('home')}>← 返回</button>
+                <span>📋 今日委托</span>
+              </div>
+              <div className="quest-list">
+                {quests.map((quest) => {
+                  const npc = npcById(quest.npcId);
+                  const actionLabel = quest.claimed
+                    ? '已领取'
+                    : quest.completed
+                      ? '领取奖励'
+                      : quest.accepted
+                        ? `${quest.progress}/${quest.required}`
+                        : '接受';
+                  return (
+                    <div className="quest-row" key={quest.id}>
+                      <div className="quest-main">
+                        <strong>{getQuestTypeIcon(quest.type)} {npc.name}的委托</strong>
+                        <span>{getQuestDescription(quest)}</span>
+                        <small>奖励：{quest.rewardBells} 铃钱</small>
+                      </div>
+                      <button
+                        disabled={quest.claimed || (quest.accepted && !quest.completed)}
+                        onClick={() => quest.completed ? claimQuestReward(quest.id) : acceptQuest(quest.id)}
+                      >
+                        {actionLabel}
+                      </button>
+                    </div>
+                  );
+                })}
+                {quests.length === 0 && <div className="nookphone-map-hint">正在获取今日委托…</div>}
+              </div>
             </div>
           )}
           {app === 'help' && (

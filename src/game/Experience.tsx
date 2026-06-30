@@ -26,6 +26,7 @@ import { NPCField } from './npc/NPCField.tsx';
 import { ShopBuilding } from './shop/ShopBuilding.tsx';
 import { MuseumBuilding } from './museum/MuseumBuilding.tsx';
 import { MuseumInterior } from './museum/MuseumInterior.tsx';
+import { NpcHouseInterior } from './npc/NpcHouseInterior.tsx';
 import { AnimalField } from './animals/AnimalField.tsx';
 import { WeatherSystem } from './WeatherSystem.tsx';
 import { AmbientFX } from './AmbientFX.tsx';
@@ -54,7 +55,7 @@ import { MAP_LAYOUT } from '../config/mapLayout.ts';
 
 export function Experience() {
   const scene = useGameStore((s) => s.scene);
-  const isIndoors = scene === 'house' || scene === 'museum';
+  const isIndoors = scene === 'house' || scene === 'museum' || scene === 'npchouse';
 
   useEffect(() => {
     if (!import.meta.env.DEV) return;
@@ -120,6 +121,7 @@ export function Experience() {
         {/* 室内场景 */}
         <HouseInterior />
         <MuseumInterior />
+        <NpcHouseInterior />
 
         {/* 玩家与相机 */}
         <Player />

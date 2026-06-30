@@ -9,12 +9,13 @@ import { ITEMS } from '../config/items.ts';
 import type { BugSpot, FishSpot, RockSpot, TreeData, PlantSpot, PathTile } from '../systems/save.ts';
 import { MUSEUM } from '../config/constants.ts';
 import { WORLD_FEATURES, type WorldFeatureId } from '../config/worldFeatures.ts';
-import { groundKind } from '../systems/terrain.ts';
+import { blocksWalking, groundKind } from '../systems/terrain.ts';
 
 export type InteractionTarget =
   | { kind: 'shop'; dist: number }
   | { kind: 'museum'; dist: number }
   | { kind: 'npc'; id: NpcId; dist: number }
+  | { kind: 'npcHouse'; id: NpcId; dist: number; npcName: string }
   | { kind: 'animal'; id: AnimalId; dist: number }
   | { kind: 'house'; dist: number }
   | { kind: 'fish'; id: string; dist: number }
@@ -24,7 +25,7 @@ export type InteractionTarget =
   | { kind: 'rock'; id: string; dist: number }
   | { kind: 'feature'; id: WorldFeatureId; dist: number }
   | { kind: 'path'; id: string; dist: number; tile: PathTile }
-  | { kind: 'water'; dist: number };
+  | { kind: 'water'; dist: number; pos: [number, number] };
 
 interface FindInteractionTargetArgs {
   playerX: number;
@@ -36,6 +37,7 @@ interface FindInteractionTargetArgs {
   rocks: RockSpot[];
   paths: PathTile[];
   minutes: number;
+  swimming: boolean;
 }
 
 const PRIORITY: Record<InteractionTarget['kind'], number> = {
@@ -43,6 +45,7 @@ const PRIORITY: Record<InteractionTarget['kind'], number> = {
   museum: 95,
   feature: 92,
   npc: 90,
+  npcHouse: 88,
   animal: 85,
   house: 80,
   rock: 75,
@@ -64,6 +67,7 @@ export function findInteractionTarget({
   rocks,
   paths,
   minutes,
+  swimming,
 }: FindInteractionTargetArgs): InteractionTarget | null {
   const targets: InteractionTarget[] = [];
 
@@ -93,6 +97,12 @@ export function findInteractionTarget({
     const p = animalPositionAt(animal, minutes);
     const dist = Math.hypot(playerX - p[0], playerZ - p[2]);
     if (dist <= WORLD.interactRadius) targets.push({ kind: 'animal', id: animal.id, dist });
+  }
+
+  for (const npc of NPCS) {
+    const doorPos: [number, number] = [npc.homePos[0], npc.homePos[2] + 3.2];
+    const dist = Math.hypot(playerX - doorPos[0], playerZ - doorPos[1]);
+    if (dist <= WORLD.interactRadius) targets.push({ kind: 'npcHouse', id: npc.id, dist, npcName: npc.name });
   }
 
   const [hx, , hz] = HOUSE.pos;
@@ -142,7 +152,7 @@ export function findInteractionTarget({
     if (dist <= MINE.interactRadius) targets.push({ kind: 'rock', id: r.id, dist });
   }
 
-  // 检测附近水域（用于游泳）
+  // 未游泳时找附近水面；游泳时找附近可上岸位置。
   const waterDirs = [
     [1, 0], [-1, 0], [0, 1], [0, -1],
     [1, 1], [-1, 1], [1, -1], [-1, -1],
@@ -151,9 +161,10 @@ export function findInteractionTarget({
   for (const [dx, dz] of waterDirs) {
     const checkX = playerX + dx;
     const checkZ = playerZ + dz;
-    if (groundKind(checkX, checkZ) === 'water') {
+    const kind = groundKind(checkX, checkZ);
+    if ((!swimming && kind === 'water') || (swimming && kind !== 'water' && !blocksWalking(checkX, checkZ))) {
       const dist = Math.hypot(dx, dz);
-      targets.push({ kind: 'water', dist });
+      targets.push({ kind: 'water', dist, pos: [checkX, checkZ] });
       break;
     }
   }
@@ -162,7 +173,7 @@ export function findInteractionTarget({
   return targets[0] ?? null;
 }
 
-export function interactionHint(target: InteractionTarget, equipped: ToolId | null): string {
+export function interactionHint(target: InteractionTarget, equipped: ToolId | null, swimming = false): string {
   if (target.kind === 'feature') {
     return WORLD_FEATURES.find((feature) => feature.id === target.id)?.hint ?? '按 E 互动';
   }
@@ -177,6 +188,7 @@ export function interactionHint(target: InteractionTarget, equipped: ToolId | nu
     return `按 E 摸摸${animal?.name ?? '小动物'}`;
   }
   if (target.kind === 'house') return '按 E 进屋';
+  if (target.kind === 'npcHouse') return `按 E 进入${target.npcName}的家`;
   if (target.kind === 'fish') return equipped === 'fishingRod' ? '按 E 抛竿钓鱼' : '装备钓竿才能钓鱼（按 2）';
   if (target.kind === 'bug') return equipped === 'net' ? '按 E 挥网捕虫' : '装备捕虫网才能捕虫（按 3）';
   if (target.kind === 'plant') {
@@ -187,7 +199,7 @@ export function interactionHint(target: InteractionTarget, equipped: ToolId | nu
   }
   if (target.kind === 'rock') return equipped === 'shovel' ? '按 E 采矿' : '需要装备铲子才能采矿（按 4）';
   if (target.kind === 'path') return '按 E 拆除道路';
-  if (target.kind === 'water') return '按 E 进入游泳';
+  if (target.kind === 'water') return swimming ? '按 E 上岸' : '按 E 下水';
   if (target.kind === 'tree') {
     if (target.hasFruit) return `按 E 摘${target.fruitName ?? '果实'}`;
     return equipped === 'axe' ? '按 E 砍树' : '装备斧头才能砍树（按 1）';

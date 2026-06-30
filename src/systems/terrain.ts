@@ -2,6 +2,7 @@ import { WORLD } from '../config/constants.ts';
 import { LAND_PADS, MAP_LAYOUT } from '../config/mapLayout.ts';
 
 const WATER_LEVEL = -1.4;
+export const SWIM_HEIGHT = WATER_LEVEL + 0.18;
 const SHORE_WALK_MIN_HEIGHT = -1.12;
 export const BRIDGE_DECK_Y = 0.95;
 export const BRIDGE_WALK_HEIGHT = 1.12;

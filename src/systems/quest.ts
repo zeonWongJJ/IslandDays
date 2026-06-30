@@ -22,6 +22,8 @@ export interface Quest {
   rewardItem?: ItemId;
   /** 是否已完成 */
   completed: boolean;
+  /** 是否已接受 */
+  accepted: boolean;
   /** 是否已领取奖励 */
   claimed: boolean;
   /** 任务生成日期 */
@@ -83,6 +85,7 @@ export function generateDailyQuest(npcId: NpcId, day: number): Quest {
     progress: 0,
     rewardBells: selected.rewardBells,
     rewardItem: selected.rewardItem,
+    accepted: false,
     completed: false,
     claimed: false,
     day,

@@ -7,6 +7,7 @@ import { useGameStore } from '../../store/useGameStore.ts';
 import { groundHeight } from '../../systems/terrain.ts';
 import { soundManager } from '../../systems/audio.ts';
 import { useGameRefs } from '../controllers/gameRefsContext.ts';
+import { LowPolyBoat } from './BoatModel.tsx';
 import { KenneyBush } from './KenneyModels.tsx';
 
 const feature = (id: WorldFeatureId) => WORLD_FEATURES.find((entry) => entry.id === id)!;
@@ -218,18 +219,7 @@ function BeachActivities() {
         })}
       </group>
       <group ref={boatRef} position={[56, -1, -76]} rotation={[0, -0.65, 0]}>
-        <mesh castShadow>
-          <boxGeometry args={[1.4, 0.45, 3.2]} />
-          <meshStandardMaterial color="#a95638" flatShading roughness={0.9} />
-        </mesh>
-        <mesh position={[0, 1.5, 0]}>
-          <cylinderGeometry args={[0.04, 0.05, 3, 6]} />
-          <meshStandardMaterial color="#684329" flatShading />
-        </mesh>
-        <mesh position={[0.05, 1.65, 0.45]} rotation={[0, -0.2, 0]}>
-          <planeGeometry args={[1.8, 2.2]} />
-          <meshStandardMaterial color="#f1e4bc" side={THREE.DoubleSide} flatShading roughness={1} />
-        </mesh>
+        <LowPolyBoat sail />
       </group>
     </group>
   );

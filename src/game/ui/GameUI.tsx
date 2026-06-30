@@ -5,7 +5,7 @@ import { useEffect, useState } from 'react';
 import { HUD } from './HUD.tsx';
 import { Toolbar } from './Toolbar.tsx';
 import { DialogueModal, InteractHint, Toasts } from './Overlays.tsx';
-import { ITEMS, type ItemId, type FurnitureItemId } from '../../config/items.ts';
+import { CLOTHING_BY_SLOT, ITEMS, type ClothingSlot, type ItemId, type FurnitureItemId } from '../../config/items.ts';
 import { useGameStore } from '../../store/useGameStore.ts';
 import { ShopUI } from '../shop/ShopUI.tsx';
 import { MiniMap } from './MiniMap.tsx';
@@ -124,6 +124,8 @@ export function GameUI() {
   const startPlacing = useGameStore((s) => s.startPlacing);
   const cancelPlacing = useGameStore((s) => s.cancelPlacing);
   const closeDialogue = useGameStore((s) => s.closeDialogue);
+  const clothing = useGameStore((s) => s.clothing);
+  const equipClothing = useGameStore((s) => s.equipClothing);
 
   const FURNITURE_ITEMS: FurnitureItemId[] = [
     'furniture_stool', 'furniture_table', 'furniture_chair', 'furniture_bench',
@@ -210,6 +212,25 @@ export function GameUI() {
                 </div>
               );
             })}
+          </div>
+          <div className="wardrobe-area">
+            <div className="place-title">换装</div>
+            {(Object.keys(CLOTHING_BY_SLOT) as ClothingSlot[]).map((slot) => (
+              <div className="wardrobe-row" key={slot}>
+                <span>{slot === 'hat' ? '帽子' : slot === 'shirt' ? '上衣' : slot === 'pants' ? '裤子' : '鞋子'}</span>
+                {CLOTHING_BY_SLOT[slot].map((id) => (
+                  <button
+                    key={id}
+                    className={clothing[slot] === id ? 'active' : ''}
+                    disabled={(inventory[id] ?? 0) <= 0}
+                    onClick={() => equipClothing(slot, clothing[slot] === id ? null : id)}
+                  >
+                    {ICON[id]} {ITEMS[id].name}
+                  </button>
+                ))}
+                {clothing[slot] && <button onClick={() => equipClothing(slot, null)}>脱下</button>}
+              </div>
+            ))}
           </div>
           {/* 室内：家具摆放快捷区 */}
           {scene === 'house' && (

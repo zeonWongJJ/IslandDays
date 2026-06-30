@@ -9,7 +9,7 @@ export function House() {
   const scene = useGameStore((s) => s.scene);
   const [hx, , hz] = HOUSE.pos;
   const y = useMemo(() => groundHeight(hx, hz), [hx, hz]);
-  const roofOpacity = useOcclusionOpacity(hx, hz, 4.8, 0.3);
+  const roofOpacity = useOcclusionOpacity(hx, hz, 4.8, 0.16);
 
   if (scene !== 'island') return null;
 

@@ -4,8 +4,10 @@
 
 import { useState } from 'react';
 import {
+  CLOTHING_BY_SLOT,
   ITEMS,
   TOOLS,
+  type ClothingItemId,
   type ItemId,
   type ToolId,
   type FurnitureItemId,
@@ -151,8 +153,9 @@ const RECIPE_ORDER: ItemId[] = [
   'recipe_desk', 'recipe_bookcase', 'recipe_cabinet', 'recipe_sofa',
   'recipe_rug', 'recipe_rugSquare', 'recipe_bed',
 ];
+const CLOTHING_ORDER = Object.values(CLOTHING_BY_SLOT).flat() as ClothingItemId[];
 
-type Tab = 'buy' | 'repair' | 'sell' | 'furniture' | 'craft' | 'plants' | 'upgrade';
+type Tab = 'buy' | 'repair' | 'sell' | 'furniture' | 'craft' | 'plants' | 'clothing' | 'turnips' | 'upgrade';
 
 export function ShopUI() {
   const open = useGameStore((s) => s.shopOpen);
@@ -166,6 +169,10 @@ export function ShopUI() {
   const sellAll = useGameStore((s) => s.sellAll);
   const buyItem = useGameStore((s) => s.buyItem);
   const craftFurniture = useGameStore((s) => s.craftFurniture);
+  const clock = useGameStore((s) => s.clock);
+  const market = useGameStore((s) => s.turnipMarket);
+  const buyTurnips = useGameStore((s) => s.buyTurnips);
+  const sellTurnips = useGameStore((s) => s.sellTurnips);
 
   const [tab, setTab] = useState<Tab>('buy');
 
@@ -186,6 +193,8 @@ export function ShopUI() {
           <button className={tab === 'buy' ? 'active' : ''} onClick={() => setTab('buy')}>🛠️ 工具</button>
           <button className={tab === 'repair' ? 'active' : ''} onClick={() => setTab('repair')}>🔧 修理</button>
           <button className={tab === 'plants' ? 'active' : ''} onClick={() => setTab('plants')}>🌱 苗木</button>
+          <button className={tab === 'clothing' ? 'active' : ''} onClick={() => setTab('clothing')}>👕 服装</button>
+          <button className={tab === 'turnips' ? 'active' : ''} onClick={() => setTab('turnips')}>🥬 大头菜</button>
           <button className={tab === 'furniture' ? 'active' : ''} onClick={() => setTab('furniture')}>🪑 家具/图纸</button>
           <button className={tab === 'craft' ? 'active' : ''} onClick={() => setTab('craft')}>🔨 合成</button>
           <button className={tab === 'sell' ? 'active' : ''} onClick={() => setTab('sell')}>💰 出售</button>
@@ -310,6 +319,57 @@ export function ShopUI() {
                 </div>
               );
             })}
+          </div>
+        )}
+
+        {tab === 'clothing' && (
+          <div className="shop-list">
+            {CLOTHING_ORDER.map((id) => {
+              const def = ITEMS[id];
+              const owned = (inventory[id] ?? 0) > 0;
+              const canAfford = bells >= def.buyPrice;
+              return (
+                <div key={id} className={`shop-row ${owned ? 'owned' : ''}`}>
+                  <span className="shop-icon">{ITEM_ICON[id]}</span>
+                  <span className="shop-name">{def.name}</span>
+                  <span className="shop-sub">{owned ? '已拥有，可在背包换装' : '永久服装'}</span>
+                  <span className="shop-price">🪙 {def.buyPrice}</span>
+                  <button disabled={owned || !canAfford} onClick={() => buyItem(id)}>
+                    {owned ? '已拥有' : canAfford ? '购买' : '钱不够'}
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {tab === 'turnips' && (
+          <div className="shop-list">
+            <div className="shop-section-title">
+              {clock.day % 7 === 0 ? '今天是周日，可按买入价购买' : '周一至周六可按当前价格出售'}
+            </div>
+            <div className="shop-row">
+              <span className="shop-icon">🥬</span>
+              <span className="shop-name">大头菜</span>
+              <span className="shop-sub">持有 {inventory.turnip ?? 0}</span>
+              <span className="shop-price">
+                {market ? `买 ${market.buyPrice} / 卖 ${market.sellPrice}` : '市场准备中'}
+              </span>
+              <div className="sell-actions">
+                {clock.day % 7 === 0 ? (
+                  <>
+                    <button disabled={!market} onClick={() => buyTurnips(1)}>买 1</button>
+                    <button disabled={!market} onClick={() => buyTurnips(10)}>买 10</button>
+                  </>
+                ) : (
+                  <>
+                    <button disabled={!market || (inventory.turnip ?? 0) < 1} onClick={() => sellTurnips(1)}>卖 1</button>
+                    <button disabled={!market || (inventory.turnip ?? 0) < 10} onClick={() => sellTurnips(10)}>卖 10</button>
+                    <button disabled={!market || (inventory.turnip ?? 0) < 1} onClick={() => sellTurnips(inventory.turnip ?? 0)}>全卖</button>
+                  </>
+                )}
+              </div>
+            </div>
           </div>
         )}
 
