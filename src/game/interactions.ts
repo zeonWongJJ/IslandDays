@@ -71,6 +71,22 @@ export function findInteractionTarget({
 }: FindInteractionTargetArgs): InteractionTarget | null {
   const targets: InteractionTarget[] = [];
 
+  if (swimming) {
+    const shoreDirs = [
+      [1, 0], [-1, 0], [0, 1], [0, -1],
+      [1, 1], [-1, 1], [1, -1], [-1, -1],
+      [2, 0], [-2, 0], [0, 2], [0, -2],
+    ];
+    for (const [dx, dz] of shoreDirs) {
+      const checkX = playerX + dx;
+      const checkZ = playerZ + dz;
+      if (groundKind(checkX, checkZ) !== 'water' && !blocksWalking(checkX, checkZ)) {
+        return { kind: 'water', dist: Math.hypot(dx, dz), pos: [checkX, checkZ] };
+      }
+    }
+    return null;
+  }
+
   for (const feature of WORLD_FEATURES) {
     const dist = Math.hypot(playerX - feature.x, playerZ - feature.z);
     if (dist <= feature.radius) targets.push({ kind: 'feature', id: feature.id, dist });
@@ -152,7 +168,7 @@ export function findInteractionTarget({
     if (dist <= MINE.interactRadius) targets.push({ kind: 'rock', id: r.id, dist });
   }
 
-  // 未游泳时找附近水面；游泳时找附近可上岸位置。
+  // 未游泳时找附近水面。
   const waterDirs = [
     [1, 0], [-1, 0], [0, 1], [0, -1],
     [1, 1], [-1, 1], [1, -1], [-1, -1],
@@ -162,7 +178,7 @@ export function findInteractionTarget({
     const checkX = playerX + dx;
     const checkZ = playerZ + dz;
     const kind = groundKind(checkX, checkZ);
-    if ((!swimming && kind === 'water') || (swimming && kind !== 'water' && !blocksWalking(checkX, checkZ))) {
+    if (kind === 'water') {
       const dist = Math.hypot(dx, dz);
       targets.push({ kind: 'water', dist, pos: [checkX, checkZ] });
       break;

@@ -11,6 +11,10 @@ export function terrainSlope(x: number, z: number, step = 0.8): number {
 }
 
 export function isDrySurface(x: number, z: number): boolean {
+  if (BRIDGES.some((bridge) => {
+    const [lx, lz] = bridgeLocalPosition(x, z, bridge);
+    return Math.abs(lx) <= bridge.size[0] / 2 + 0.1 && Math.abs(lz) <= bridge.size[2] / 2 + 0.1;
+  })) return true;
   const kind = groundKind(x, z);
   return kind !== 'water' && riverAmount(x, z) <= 0.25 && groundHeight(x, z) > -0.95;
 }
@@ -25,6 +29,14 @@ function distanceToSegment(x: number, z: number, a: [number, number], b: [number
   const ls = vx * vx + vz * vz || 1;
   const t = Math.max(0, Math.min(1, ((x - a[0]) * vx + (z - a[1]) * vz) / ls));
   return Math.hypot(x - (a[0] + vx * t), z - (a[1] + vz * t));
+}
+
+function bridgeLocalPosition(x: number, z: number, bridge: (typeof BRIDGES)[number]): [number, number] {
+  const dx = x - bridge.pos[0];
+  const dz = z - bridge.pos[2];
+  const c = Math.cos(-bridge.rotation);
+  const s = Math.sin(-bridge.rotation);
+  return [dx * c - dz * s, dx * s + dz * c];
 }
 
 export function roadClearance(x: number, z: number): number {
@@ -100,12 +112,6 @@ export function collectPlacementWarnings(): string[] {
       warnings.push(`${label} 落点不平或接近水面: (${x.toFixed(1)}, ${z.toFixed(1)}) kind=${groundKind(x, z)} slope=${terrainSlope(x, z).toFixed(2)}`);
     }
   };
-  const checkPassage = (label: string, x: number, z: number, radius = 0.65) => {
-    if (blocksMainPassage(x, z, radius)) {
-      warnings.push(`${label} 侵占主通道: (${x.toFixed(1)}, ${z.toFixed(1)}) roadClear=${roadClearance(x, z).toFixed(2)} bridgeClear=${bridgeClearance(x, z).toFixed(2)}`);
-    }
-  };
-
   checkFlat('玩家房子', HOUSE.pos[0], HOUSE.pos[2]);
   checkFlat('商店', MAP_LAYOUT.shop.pos[0], MAP_LAYOUT.shop.pos[2]);
   checkFlat('博物馆', MAP_LAYOUT.museum.pos[0], MAP_LAYOUT.museum.pos[2]);
@@ -120,23 +126,6 @@ export function collectPlacementWarnings(): string[] {
     checkFlat(`桥 ${bridge.id} 左端`, leftX, leftZ, 0.45);
     checkFlat(`桥 ${bridge.id} 右端`, rightX, rightZ, 0.45);
   });
-  MAP_LAYOUT.bridges.forEach((bridge) => {
-    const [length, , width] = bridge.size;
-    const tx = Math.cos(bridge.rotation);
-    const tz = -Math.sin(bridge.rotation);
-    const nx = Math.sin(bridge.rotation);
-    const nz = Math.cos(bridge.rotation);
-    [-1, 1].forEach((end) => {
-      const side = end > 0 ? 1 : -1;
-      checkPassage(
-        `桥头灯 ${bridge.id}`,
-        bridge.pos[0] + tx * end * (length / 2 + 1.7) + nx * side * (width / 2 + 2.2),
-        bridge.pos[2] + tz * end * (length / 2 + 1.7) + nz * side * (width / 2 + 2.2),
-        0.55,
-      );
-    });
-  });
-
   const waterfallTop = groundHeight(MAP_LAYOUT.waterfall.top[0], MAP_LAYOUT.waterfall.top[2]);
   const waterfallBottom = groundHeight(MAP_LAYOUT.waterfall.pool[0], MAP_LAYOUT.waterfall.pool[2]);
   if (waterfallTop - waterfallBottom < 2.0) {

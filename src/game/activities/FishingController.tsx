@@ -144,9 +144,9 @@ function FishingLine({ from, to }: { from: THREE.Vector3; to: THREE.Vector3 }) {
 function FishShadow({ center }: { center: THREE.Vector3 }) {
   const ref = useRef<THREE.Group>(null);
   const angle = useRef(0);
-  useFrame((state) => {
+  useFrame((_, delta) => {
     if (!ref.current) return;
-    angle.current += state.clock.getDelta() * 0.8;
+    angle.current += delta * 0.8;
     const r = 0.5;
     ref.current.position.x = center.x + Math.cos(angle.current) * r;
     ref.current.position.z = center.z + Math.sin(angle.current * 0.7) * r * 0.5;

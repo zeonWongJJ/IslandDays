@@ -22,6 +22,7 @@ import { useGameTimeRef } from './useGameTimeRef.ts';
 import { findInteractionTarget, interactionHint } from './interactions.ts';
 import { blocksWalking, groundKind, isOnBridge, nearestWalkable, SWIM_HEIGHT, walkingHeight } from '../systems/terrain.ts';
 import { getStaticObstacles } from '../systems/staticObstacles.ts';
+import { buildSpatialGrid, querySpatialGrid } from '../systems/spatialGrid.ts';
 import { acceptsTreePlacement } from '../systems/placement.ts';
 import { soundManager, initAudio } from '../systems/audio.ts';
 import { KenneyPlayer, type PlayerLimbRefs } from './world/KenneyCharacters.tsx';
@@ -55,6 +56,18 @@ export function Player() {
   const interactiveTrees = useMemo(
     () => trees.filter((tree) => acceptsTreePlacement(tree.pos[0], tree.pos[2])),
     [trees],
+  );
+  const treeGrid = useMemo(
+    () => buildSpatialGrid(interactiveTrees, (tree) => [tree.pos[0], tree.pos[2]]),
+    [interactiveTrees],
+  );
+  const rockGrid = useMemo(
+    () => buildSpatialGrid(rocks, (rock) => [rock.pos[0], rock.pos[2]]),
+    [rocks],
+  );
+  const obstacleGrid = useMemo(
+    () => buildSpatialGrid(staticObstacles, (obstacle) => [obstacle.pos[0], obstacle.pos[2]]),
+    [staticObstacles],
   );
 
   const setPlayer = useGameStore((s) => s.setPlayer);
@@ -198,86 +211,89 @@ export function Player() {
 
     if (curScene === 'island') {
       // ── 岛上：树木碰撞 + 房屋碰撞 + 世界边界 + 地形高度 ──
-      for (const t of interactiveTrees) {
-        if (t.state !== 'intact') continue;
-        tmpPush.set(tmpNext.x - t.pos[0], 0, tmpNext.z - t.pos[2]);
-        const d = tmpPush.length();
-        const minD = WORLD.playerRadius + TREE.radius;
-        if (d < minD && d > 1e-5) {
-          tmpPush.multiplyScalar(1 / d);
-          tmpNext.set(t.pos[0] + tmpPush.x * minD, 0, t.pos[2] + tmpPush.z * minD);
+      if (!swimming) {
+        for (const t of querySpatialGrid(treeGrid, tmpNext.x, tmpNext.z, 3)) {
+          if (t.state !== 'intact') continue;
+          tmpPush.set(tmpNext.x - t.pos[0], 0, tmpNext.z - t.pos[2]);
+          const d = tmpPush.length();
+          const minD = WORLD.playerRadius + TREE.radius;
+          if (d < minD && d > 1e-5) {
+            tmpPush.multiplyScalar(1 / d);
+            tmpNext.set(t.pos[0] + tmpPush.x * minD, 0, t.pos[2] + tmpPush.z * minD);
+          }
         }
-      }
-      // 房屋碰撞
-      const [hx, , hz] = HOUSE.pos;
-      tmpPush.set(tmpNext.x - hx, 0, tmpNext.z - hz);
-      const hd = tmpPush.length();
-      const hmin = WORLD.playerRadius + HOUSE.radius;
-      if (hd < hmin && hd > 1e-5) {
-        tmpPush.multiplyScalar(1 / hd);
-        tmpNext.set(hx + tmpPush.x * hmin, 0, hz + tmpPush.z * hmin);
-      }
-      for (const npc of NPCS) {
-        tmpPush.set(tmpNext.x - npc.homePos[0], 0, tmpNext.z - npc.homePos[2]);
-        const nd = tmpPush.length();
-        const minD = WORLD.playerRadius + 3;
-        if (nd < minD && nd > 1e-5) {
-          tmpPush.multiplyScalar(1 / nd);
-          tmpNext.set(npc.homePos[0] + tmpPush.x * minD, 0, npc.homePos[2] + tmpPush.z * minD);
+        // 房屋碰撞
+        const [hx, , hz] = HOUSE.pos;
+        tmpPush.set(tmpNext.x - hx, 0, tmpNext.z - hz);
+        const hd = tmpPush.length();
+        const hmin = WORLD.playerRadius + HOUSE.radius;
+        if (hd < hmin && hd > 1e-5) {
+          tmpPush.multiplyScalar(1 / hd);
+          tmpNext.set(hx + tmpPush.x * hmin, 0, hz + tmpPush.z * hmin);
         }
-      }
-      for (const rock of rocks) {
-        if (rock.state !== 'intact') continue;
-        tmpPush.set(tmpNext.x - rock.pos[0], 0, tmpNext.z - rock.pos[2]);
-        const rd = tmpPush.length();
-        const minD = WORLD.playerRadius + 0.75;
-        if (rd < minD && rd > 1e-5) {
-          tmpPush.multiplyScalar(1 / rd);
-          tmpNext.set(rock.pos[0] + tmpPush.x * minD, 0, rock.pos[2] + tmpPush.z * minD);
+        for (const npc of NPCS) {
+          tmpPush.set(tmpNext.x - npc.homePos[0], 0, tmpNext.z - npc.homePos[2]);
+          const nd = tmpPush.length();
+          const minD = WORLD.playerRadius + 3;
+          if (nd < minD && nd > 1e-5) {
+            tmpPush.multiplyScalar(1 / nd);
+            tmpNext.set(npc.homePos[0] + tmpPush.x * minD, 0, npc.homePos[2] + tmpPush.z * minD);
+          }
         }
-      }
-      for (const npc of NPCS) {
-        const p = npcPositionAt(npc, tRef.current);
-        tmpPush.set(tmpNext.x - p[0], 0, tmpNext.z - p[2]);
-        const nd = tmpPush.length();
-        const minD = WORLD.playerRadius + 0.65;
-        if (nd < minD && nd > 1e-5) {
-          tmpPush.multiplyScalar(1 / nd);
-          tmpNext.set(p[0] + tmpPush.x * minD, 0, p[2] + tmpPush.z * minD);
+        for (const rock of querySpatialGrid(rockGrid, tmpNext.x, tmpNext.z, 3)) {
+          if (rock.state !== 'intact') continue;
+          tmpPush.set(tmpNext.x - rock.pos[0], 0, tmpNext.z - rock.pos[2]);
+          const rd = tmpPush.length();
+          const minD = WORLD.playerRadius + 0.75;
+          if (rd < minD && rd > 1e-5) {
+            tmpPush.multiplyScalar(1 / rd);
+            tmpNext.set(rock.pos[0] + tmpPush.x * minD, 0, rock.pos[2] + tmpPush.z * minD);
+          }
         }
-      }
-      for (const animal of ANIMALS) {
-        const p = animalPositionAt(animal, tRef.current);
-        tmpPush.set(tmpNext.x - p[0], 0, tmpNext.z - p[2]);
-        const ad = tmpPush.length();
-        const minD = WORLD.playerRadius + 0.5;
-        if (ad < minD && ad > 1e-5) {
-          tmpPush.multiplyScalar(1 / ad);
-          tmpNext.set(p[0] + tmpPush.x * minD, 0, p[2] + tmpPush.z * minD);
+        for (const npc of NPCS) {
+          const p = npcPositionAt(npc, tRef.current);
+          tmpPush.set(tmpNext.x - p[0], 0, tmpNext.z - p[2]);
+          const nd = tmpPush.length();
+          const minD = WORLD.playerRadius + 0.65;
+          if (nd < minD && nd > 1e-5) {
+            tmpPush.multiplyScalar(1 / nd);
+            tmpNext.set(p[0] + tmpPush.x * minD, 0, p[2] + tmpPush.z * minD);
+          }
         }
-      }
-      tmpPush.set(tmpNext.x - MAP_LAYOUT.shop.pos[0], 0, tmpNext.z - MAP_LAYOUT.shop.pos[2]);
-      const sd = tmpPush.length();
-      const smin = WORLD.playerRadius + 3.2;
-      if (sd < smin && sd > 1e-5) {
-        tmpPush.multiplyScalar(1 / sd);
-        tmpNext.set(MAP_LAYOUT.shop.pos[0] + tmpPush.x * smin, 0, MAP_LAYOUT.shop.pos[2] + tmpPush.z * smin);
-      }
-      tmpPush.set(tmpNext.x - MAP_LAYOUT.museum.pos[0], 0, tmpNext.z - MAP_LAYOUT.museum.pos[2]);
-      const md = tmpPush.length();
-      const mmin = WORLD.playerRadius + 4;
-      if (md < mmin && md > 1e-5) {
-        tmpPush.multiplyScalar(1 / md);
-        tmpNext.set(MAP_LAYOUT.museum.pos[0] + tmpPush.x * mmin, 0, MAP_LAYOUT.museum.pos[2] + tmpPush.z * mmin);
-      }
-      for (const obstacle of staticObstacles) {
-        if (isOnBridge(g.position.x, g.position.z) || isOnBridge(tmpNext.x, tmpNext.z)) break;
-        tmpPush.set(tmpNext.x - obstacle.pos[0], 0, tmpNext.z - obstacle.pos[2]);
-        const od = tmpPush.length();
-        const minD = WORLD.playerRadius + obstacle.radius;
-        if (od < minD && od > 1e-5) {
-          tmpPush.multiplyScalar(1 / od);
-          tmpNext.set(obstacle.pos[0] + tmpPush.x * minD, 0, obstacle.pos[2] + tmpPush.z * minD);
+        for (const animal of ANIMALS) {
+          const p = animalPositionAt(animal, tRef.current);
+          tmpPush.set(tmpNext.x - p[0], 0, tmpNext.z - p[2]);
+          const ad = tmpPush.length();
+          const minD = WORLD.playerRadius + 0.5;
+          if (ad < minD && ad > 1e-5) {
+            tmpPush.multiplyScalar(1 / ad);
+            tmpNext.set(p[0] + tmpPush.x * minD, 0, p[2] + tmpPush.z * minD);
+          }
+        }
+        tmpPush.set(tmpNext.x - MAP_LAYOUT.shop.pos[0], 0, tmpNext.z - MAP_LAYOUT.shop.pos[2]);
+        const sd = tmpPush.length();
+        const smin = WORLD.playerRadius + 3.2;
+        if (sd < smin && sd > 1e-5) {
+          tmpPush.multiplyScalar(1 / sd);
+          tmpNext.set(MAP_LAYOUT.shop.pos[0] + tmpPush.x * smin, 0, MAP_LAYOUT.shop.pos[2] + tmpPush.z * smin);
+        }
+        tmpPush.set(tmpNext.x - MAP_LAYOUT.museum.pos[0], 0, tmpNext.z - MAP_LAYOUT.museum.pos[2]);
+        const md = tmpPush.length();
+        const mmin = WORLD.playerRadius + 4;
+        if (md < mmin && md > 1e-5) {
+          tmpPush.multiplyScalar(1 / md);
+          tmpNext.set(MAP_LAYOUT.museum.pos[0] + tmpPush.x * mmin, 0, MAP_LAYOUT.museum.pos[2] + tmpPush.z * mmin);
+        }
+        if (!isOnBridge(g.position.x, g.position.z) && !isOnBridge(tmpNext.x, tmpNext.z)) {
+          for (const obstacle of querySpatialGrid(obstacleGrid, tmpNext.x, tmpNext.z, 7)) {
+            tmpPush.set(tmpNext.x - obstacle.pos[0], 0, tmpNext.z - obstacle.pos[2]);
+            const od = tmpPush.length();
+            const minD = WORLD.playerRadius + obstacle.radius;
+            if (od < minD && od > 1e-5) {
+              tmpPush.multiplyScalar(1 / od);
+              tmpNext.set(obstacle.pos[0] + tmpPush.x * minD, 0, obstacle.pos[2] + tmpPush.z * minD);
+            }
+          }
         }
       }
       const clamped = clampToWorld([tmpNext.x, 0, tmpNext.z]);
@@ -624,13 +640,16 @@ export function Player() {
                 harvestFruit(target.id);
                 soundManager.play('pickup');
               } else {
-                toolActionRef.current = { kind: 'axe', elapsed: 0, duration: 0.46, burst: 1 };
-                chopTree(target.id);
-                soundManager.play('chop');
+                if (chopTree(target.id)) {
+                  toolActionRef.current = { kind: 'axe', elapsed: 0, duration: 0.46, burst: 1 };
+                  soundManager.play('chop');
+                }
               }
             }
             else if (target.kind === 'feature') interactWorldFeature(target.id);
-            else if (target.kind === 'fish') { startFishing(target.id); soundManager.play('cast'); }
+            else if (target.kind === 'fish') {
+              if (startFishing(target.id)) soundManager.play('cast');
+            }
             else if (target.kind === 'npc') talkToNpc(target.id);
             else if (target.kind === 'animal') interactWithAnimal(target.id);
             else if (target.kind === 'npcHouse') { enterNpcHouse(target.id); soundManager.play('door'); }
@@ -654,14 +673,14 @@ export function Player() {
                 harvestPlant(target.id);
                 soundManager.play('pickup');
               } else {
-                waterPlant(target.id);
-                soundManager.play('equip');
+                if (waterPlant(target.id)) soundManager.play('equip');
               }
             }
             else if (target.kind === 'rock') {
-              toolActionRef.current = { kind: 'shovel', elapsed: 0, duration: 0.5, burst: 1 };
-              mineRock(target.id);
-              soundManager.play('mine');
+              if (mineRock(target.id)) {
+                toolActionRef.current = { kind: 'shovel', elapsed: 0, duration: 0.5, burst: 1 };
+                soundManager.play('mine');
+              }
             }
             else if (target.kind === 'path') {
               removePath(target.id);
@@ -693,10 +712,11 @@ export function Player() {
               const b = bugs.find((x) => x.id === target.id);
               const distR = b ? Math.hypot(g.position.x - b.pos[0], g.position.z - b.pos[2]) / BUG.catchRadius : 1;
               const missChance = distR > 0.6 ? 0.35 : 0.05;
-              toolActionRef.current = { kind: 'net', elapsed: 0, duration: 0.42, burst: 1 };
-              soundManager.play('netSwing');
-              if (Math.random() < missChance) missBug(target.id);
-              else catchBug(target.id);
+              const succeeded = Math.random() < missChance ? missBug(target.id) : catchBug(target.id);
+              if (succeeded) {
+                toolActionRef.current = { kind: 'net', elapsed: 0, duration: 0.42, burst: 1 };
+                soundManager.play('netSwing');
+              }
             }
           }
         }

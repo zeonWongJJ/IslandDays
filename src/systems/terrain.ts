@@ -276,9 +276,9 @@ export function groundKind(x: number, z: number): GroundKind {
   const h = groundHeight(x, z);
   const pad = landPadAmount(x, z);
 
-  if (h < WATER_LEVEL + 0.28 || riverAmount(x, z) > 0.45) return 'water';
   if (plazaPavingAmount(x, z) > 0.42) return 'paving';
   if (pad.amount > 0.5) return pad.buildable ? 'foundation' : 'road';
+  if (h < WATER_LEVEL + 0.28 || riverAmount(x, z) > 0.45) return 'water';
   if (roadAmount(x, z) > 0.45) return 'road';
 
   const boost = mountainBoost(x, z);

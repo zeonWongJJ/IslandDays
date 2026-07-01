@@ -12,11 +12,12 @@
 
 ## 快速开始
 
-需要 Node 18+。
+需要 Node 20.19+。
 
 ```bash
 npm install        # 安装依赖
 npm run dev        # 启动开发服务器 → http://localhost:5173
+npm test           # 运行关键玩法回归测试
 npm run build      # 类型检查 + 生产构建（输出到 dist/）
 npm run preview    # 本地预览生产构建
 npm run lint       # ESLint 检查

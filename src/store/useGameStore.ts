@@ -151,7 +151,7 @@ interface GameState extends SaveData {
 
   // 钓鱼
   /** 开始一次钓鱼（抛竿）。由 Player 在按 E 时调用。 */
-  startFishing: (spotId: string) => void;
+  startFishing: (spotId: string) => boolean;
   /** FishingController 推进钓鱼阶段。 */
   setFishingPhase: (phase: FishingPhase, prompt: string | null) => void;
   /** 钓上鱼：结算。由 FishingController 在成功拉杆时调用。 */
@@ -164,8 +164,8 @@ interface GameState extends SaveData {
   progressReel: () => void;
 
   // 捕虫
-  catchBug: (spotId: string) => void;
-  missBug: (spotId: string) => void;
+  catchBug: (spotId: string) => boolean;
+  missBug: (spotId: string) => boolean;
   /** 推进虫点状态：激活到期的隐藏点、让停留到期的虫逃跑。
    *  realNow 为 three clock.elapsedTime（真实秒），gameMinNow 为当前游戏分钟。 */
   tickBugs: (realNow: number, gameMinNow: number) => void;
@@ -203,10 +203,10 @@ interface GameState extends SaveData {
   // 铲子种植
   digHole: (pos: Vec3) => void;
   plantAtSpot: (spotId: string) => void;
-  waterPlant: (spotId: string) => void;
+  waterPlant: (spotId: string) => boolean;
   harvestPlant: (spotId: string) => void;
   growPlants: () => void;
-  mineRock: (rockId: string) => void;
+  mineRock: (rockId: string) => boolean;
 
   // 道路
   placePath: (pos: Vec3) => void;
@@ -344,11 +344,12 @@ export const useGameStore = create<GameState>()(
         const cost = nextLevel === 2 ? 500 : 2000;
         const ore = nextLevel === 2 ? 'iron_ore' : 'gold_ore';
         const oreCost = nextLevel === 2 ? 3 : 2;
-        if (!s.spendBells(cost) || (s.inventory[ore] ?? 0) < oreCost) {
+        if (s.player.bells < cost || (s.inventory[ore] ?? 0) < oreCost) {
           get().pushToast(`升级需要 🪙${cost} + ${ore}×${oreCost}`);
           return;
         }
         set({
+          player: { ...s.player, bells: s.player.bells - cost },
           tools: { ...s.tools, [toolId]: maxDur },
           toolLevel: { ...s.toolLevel, [toolId]: nextLevel },
           inventory: { ...s.inventory, [ore]: (s.inventory[ore] ?? 0) - oreCost },
@@ -806,17 +807,18 @@ export const useGameStore = create<GameState>()(
       startFishing: (spotId) => {
         const s = get();
         const spot = s.fishSpots.find((f) => f.id === spotId);
-        if (!spot || spot.state !== 'idle') return;
+        if (!spot || spot.state !== 'idle') return false;
         if (s.equipped !== 'fishingRod') {
           get().pushToast('需要装备钓竿');
-          return;
+          return false;
         }
         const dur = s.tools.fishingRod ?? 0;
         if (dur <= 0) {
           get().pushToast('钓竿坏了，去商店修理');
-          return;
+          return false;
         }
         set({ fishing: { phase: 'casting', spotId, prompt: '抛竿中…', reelingProgress: 0 } });
+        return true;
       },
 
       setFishingPhase: (phase, prompt) =>
@@ -869,20 +871,20 @@ export const useGameStore = create<GameState>()(
       catchBug: (spotId) => {
         const s = get();
         const spot = s.bugs.find((b) => b.id === spotId);
-        if (!spot || spot.state !== 'active') return;
+        if (!spot || spot.state !== 'active') return false;
         if (s.equipped !== 'net') {
           get().pushToast('需要装备捕虫网');
-          return;
+          return false;
         }
         const itemId = rollBug(Math.random(), s.clock.day, s.clock.minutes, WEATHER.seasonStart);
         if ((s.inventory[itemId] ?? 0) >= ITEMS[itemId].stack) {
           get().pushToast(`${ITEMS[itemId].name}已满，无法捕捉`);
-          return;
+          return false;
         }
         const dur = s.tools.net ?? 0;
         if (dur <= 0) {
           get().pushToast('捕虫网坏了，去商店修理');
-          return;
+          return false;
         }
         const newDur = Math.max(0, dur - TOOL_USE.netCost);
         const readyAt = s.clock.day * CLOCK.minutesPerDay + s.clock.minutes + BUG.cooldownMinutes;
@@ -894,18 +896,19 @@ export const useGameStore = create<GameState>()(
         });
         get().updateQuestProgress(itemId, 1);
         get().pushToast(`捕到了${ITEMS[itemId].name}！`);
+        return true;
       },
 
       missBug: (spotId) => {
         const s = get();
         if (s.equipped !== 'net') {
           get().pushToast('需要装备捕虫网');
-          return;
+          return false;
         }
         const dur = s.tools.net ?? 0;
         if (dur <= 0) {
           get().pushToast('捕虫网坏了，去商店修理');
-          return;
+          return false;
         }
         const newDur = Math.max(0, dur - TOOL_USE.netCost);
         const readyAt = s.clock.day * CLOCK.minutesPerDay + s.clock.minutes + BUG.cooldownMinutes;
@@ -914,6 +917,7 @@ export const useGameStore = create<GameState>()(
           bugs: s.bugs.map((b) => (b.id === spotId ? { ...b, state: 'cooling', readyAt, fleeAt: null } : b)),
         });
         get().pushToast('虫飞走了…');
+        return true;
       },
 
       tickBugs: (realNow, gameMinNow) => {
@@ -1056,6 +1060,10 @@ export const useGameStore = create<GameState>()(
           get().pushToast('材料不足');
           return false;
         }
+        if ((s.inventory[output] ?? 0) >= ITEMS[output].stack) {
+          get().pushToast(`${ITEMS[output].name}已满，无法继续制作`);
+          return false;
+        }
         // 消耗材料（图纸不消耗）
         const inv: Partial<Record<ItemId, number>> = { ...s.inventory };
         for (const [id, need] of Object.entries(recipe.materials) as [ItemId, number][]) {
@@ -1156,6 +1164,10 @@ export const useGameStore = create<GameState>()(
         const newAff = Math.min(100, curAff + delta);
         const unlock = npc.recipeUnlock;
         const unlocked = unlock && curAff < unlock.threshold && newAff >= unlock.threshold;
+        if (unlocked && (s.inventory[unlock.recipe] ?? 0) >= ITEMS[unlock.recipe].stack) {
+          get().pushToast(`${ITEMS[unlock.recipe].name}已满，先清理背包再送礼`);
+          return;
+        }
         const itemName = ITEMS[itemId]?.name ?? itemId;
         const giftLine = liked
           ? npc.giftResponses[s.clock.day % npc.giftResponses.length].replace(/\{item\}/g, itemName)
@@ -1223,6 +1235,10 @@ export const useGameStore = create<GameState>()(
             get().pushToast('宝箱仍被封印：按风、水、林的顺序触碰符文');
             return;
           }
+          if ((s.inventory.gold_ore ?? 0) + 2 > ITEMS.gold_ore.stack) {
+            get().pushToast('金矿石空间不足，清理背包后再打开宝箱');
+            return;
+          }
           set({
             player: { ...s.player, bells: s.player.bells + 1200 },
             inventory: { ...s.inventory, gold_ore: Math.min((s.inventory.gold_ore ?? 0) + 2, ITEMS.gold_ore.stack) },
@@ -1266,6 +1282,10 @@ export const useGameStore = create<GameState>()(
           return;
         }
         const reward: ItemId = npcId === 'mira' ? 'flower_seed' : npcId === 'tao' ? 'fish_common' : 'wood';
+        if ((s.inventory[reward] ?? 0) >= ITEMS[reward].stack) {
+          get().pushToast(`${ITEMS[reward].name}已满，清理背包后再来`);
+          return;
+        }
         set({
           inventory: { ...s.inventory, [reward]: Math.min((s.inventory[reward] ?? 0) + 1, ITEMS[reward].stack) },
           social: { ...s.social, daily: { ...s.social.daily, [dailyKey]: s.clock.day } },
@@ -1353,18 +1373,19 @@ export const useGameStore = create<GameState>()(
 
       waterPlant: (spotId) => {
         const s = get();
-        if (s.equipped !== 'watering_can') { get().pushToast('需要装备水壶（按 5）'); return; }
+        if (s.equipped !== 'watering_can') { get().pushToast('需要装备水壶（按 5）'); return false; }
         const dur = s.tools.watering_can ?? 0;
-        if (dur <= 0) { get().pushToast('水壶没水了，去商店维修'); return; }
+        if (dur <= 0) { get().pushToast('水壶没水了，去商店维修'); return false; }
         const spot = s.plants.find((p) => p.id === spotId);
-        if (!spot || spot.stage < 0 || spot.stage >= 2) return;
-        if (spot.wateredToday) { get().pushToast('今天已经浇过水了'); return; }
+        if (!spot || spot.stage < 0 || spot.stage >= 2) return false;
+        if (spot.wateredToday) { get().pushToast('今天已经浇过水了'); return false; }
         const newDur = Math.max(0, dur - TOOL_USE.waterCost);
         set({
           plants: s.plants.map((p) => (p.id === spotId ? { ...p, wateredToday: true } : p)),
           tools: { ...s.tools, watering_can: newDur },
         });
         get().pushToast('浇了水，明天会长大');
+        return true;
       },
 
       harvestPlant: (spotId) => {
@@ -1405,15 +1426,15 @@ export const useGameStore = create<GameState>()(
       },
       mineRock: (rockId) => {
         const s = get();
-        if (s.equipped !== 'shovel') { get().pushToast('需要装备铲子'); return; }
+        if (s.equipped !== 'shovel') { get().pushToast('需要装备铲子'); return false; }
         const dur = s.tools.shovel ?? 0;
-        if (dur <= 0) { get().pushToast('铲子坏了'); return; }
+        if (dur <= 0) { get().pushToast('铲子坏了'); return false; }
         const rng = () => Math.random();
         const roll = rng();
         const itemId = roll < 0.5 ? 'stone' : roll < 0.8 ? 'iron_ore' : 'gold_ore';
         if ((s.inventory[itemId] ?? 0) >= ITEMS[itemId].stack) {
           get().pushToast(`${ITEMS[itemId].name}已满，先清理背包`);
-          return;
+          return false;
         }
         const newDur = Math.max(0, dur - TOOL_USE.shovelCost);
         const readyAt = s.clock.day * CLOCK.minutesPerDay + s.clock.minutes + MINE.cooldownMinutes;
@@ -1424,6 +1445,7 @@ export const useGameStore = create<GameState>()(
         });
         get().updateQuestProgress(itemId, 1);
         get().pushToast(`采到了${ITEMS[itemId].name}！`);
+        return true;
       },
 
       // ───────── 道路 ─────────
@@ -1456,6 +1478,10 @@ export const useGameStore = create<GameState>()(
         if (!path) return;
         const typeMap: Record<string, ItemId> = { stone: 'path_stone', brick: 'path_brick', wood: 'path_wood', dirt: 'path_dirt' };
         const itemId = typeMap[path.type] as ItemId;
+        if ((s.inventory[itemId] ?? 0) >= ITEMS[itemId].stack) {
+          get().pushToast(`${ITEMS[itemId].name}已满，无法回收道路`);
+          return;
+        }
         set({
           paths: s.paths.filter((p) => p.id !== pathId),
           inventory: { ...s.inventory, [itemId]: Math.min((s.inventory[itemId] ?? 0) + 1, ITEMS[itemId].stack) },

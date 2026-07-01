@@ -12,39 +12,40 @@ import { Tree } from './Tree.tsx';
 
 export function TreeField() {
   const trees = useGameStore((s) => s.trees);
-  const visibleTrees = trees.filter((tree) => acceptsTreePlacement(tree.pos[0], tree.pos[2]));
-  return (
-    <group>
-      {visibleTrees.map((t) => (
-        <TreeLOD key={t.id} data={t} />
-      ))}
-    </group>
-  );
-}
-
-function TreeLOD({ data }: { data: TreeData }) {
-  const timerRef = useRef(0);
   const { playerRef } = useGameRefs();
-  const [level, setLevel] = useState<'near' | 'far' | 'hidden'>(() => {
+  const timerRef = useRef(0);
+  const [lodCenter, setLodCenter] = useState<[number, number]>(() => {
     const player = useGameStore.getState().player.pos;
-    const distSq = (player[0] - data.pos[0]) ** 2 + (player[2] - data.pos[2]) ** 2;
-    return distSq <= 62 * 62 ? 'near' : distSq <= 142 * 142 ? 'far' : 'hidden';
+    return [player[0], player[2]];
   });
+  const visibleTrees = useMemo(
+    () => trees.filter((tree) => acceptsTreePlacement(tree.pos[0], tree.pos[2])),
+    [trees],
+  );
 
   useFrame((_, dt) => {
     timerRef.current += dt;
-    if (timerRef.current < 0.3) return;
+    if (timerRef.current < 0.35) return;
     timerRef.current = 0;
     const player = playerRef.current;
     if (!player) return;
-    const distSq = (player.position.x - data.pos[0]) ** 2 + (player.position.z - data.pos[2]) ** 2;
-    const next = distSq <= 58 * 58 ? 'near' : distSq <= 142 * 142 ? 'far' : 'hidden';
-    setLevel((current) => current === next ? current : next);
+    setLodCenter((current) => {
+      const dx = player.position.x - current[0];
+      const dz = player.position.z - current[1];
+      return dx * dx + dz * dz >= 36 ? [player.position.x, player.position.z] : current;
+    });
   });
 
-  if (level === 'near') return <Tree data={data} />;
-  if (level === 'far') return <DistantTree data={data} />;
-  return null;
+  return (
+    <group>
+      {visibleTrees.map((tree) => {
+        const distSq = (lodCenter[0] - tree.pos[0]) ** 2 + (lodCenter[1] - tree.pos[2]) ** 2;
+        if (distSq <= 60 * 60) return <Tree key={tree.id} data={tree} />;
+        if (distSq <= 142 * 142) return <DistantTree key={tree.id} data={tree} />;
+        return null;
+      })}
+    </group>
+  );
 }
 
 function DistantTree({ data }: { data: TreeData }) {
