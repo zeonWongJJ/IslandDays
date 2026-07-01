@@ -353,28 +353,40 @@ export function Player() {
       const dive = diveRef.current;
       const progress = dive.elapsed / dive.duration;
       const arc = Math.sin(progress * Math.PI);
-      limbs.bodyGroup.position.y = arc * 0.12;
-      limbs.bodyGroup.rotation.x = -0.35 - arc * 0.95;
+      limbs.bodyGroup.position.y = arc * 0.18 - progress * 0.28;
+      limbs.bodyGroup.rotation.x = -0.28 - arc * 0.72 - progress * 0.48;
       limbs.bodyGroup.rotation.z *= 0.75;
-      limbs.legLeft.rotation.x = 0.25 + arc * 0.35;
-      limbs.legRight.rotation.x = 0.25 + arc * 0.35;
-      limbs.armLeft.rotation.x = -1.15 + progress * 0.45;
-      limbs.armRight.rotation.x = -1.15 + progress * 0.45;
-      limbs.armLeft.rotation.z = -0.28;
-      limbs.armRight.rotation.z = 0.28;
+      limbs.legLeft.rotation.x = 0.2 + arc * 0.42;
+      limbs.legRight.rotation.x = 0.2 + arc * 0.42;
+      limbs.armLeft.rotation.x = -1.35 + progress * 0.22;
+      limbs.armRight.rotation.x = -1.35 + progress * 0.22;
+      limbs.armLeft.rotation.z = -0.18;
+      limbs.armRight.rotation.z = 0.18;
     } else if (swimming && limbs) {
-      walkPhase.current += dt * (moving ? 7.5 : 4.2);
+      walkPhase.current += dt * (moving ? 5.8 : 3.2);
       const phase = walkPhase.current;
-      const effort = moving ? 1 : 0.45;
-      limbs.bodyGroup.position.y = Math.sin(phase * 0.5) * 0.035;
-      limbs.bodyGroup.rotation.x += (-0.34 - limbs.bodyGroup.rotation.x) * Math.min(1, dt * 7);
-      limbs.bodyGroup.rotation.z = Math.sin(phase * 0.5) * 0.035;
-      limbs.legLeft.rotation.x = Math.sin(phase) * 0.38 * effort;
-      limbs.legRight.rotation.x = Math.sin(phase + Math.PI) * 0.38 * effort;
-      limbs.armLeft.rotation.x = Math.sin(phase) * 0.42 * effort - 0.35;
-      limbs.armRight.rotation.x = Math.sin(phase + Math.PI) * 0.42 * effort - 0.35;
-      limbs.armLeft.rotation.z = -0.72 + Math.sin(phase * 0.5) * 0.18;
-      limbs.armRight.rotation.z = 0.72 - Math.sin(phase * 0.5) * 0.18;
+      const stroke = (Math.sin(phase) + 1) * 0.5;
+      const pitch = moving ? -1.12 : -0.72;
+      const depth = moving ? -0.34 : -0.2;
+      limbs.bodyGroup.position.y += (depth + Math.sin(phase * 0.5) * 0.035 - limbs.bodyGroup.position.y) * Math.min(1, dt * 7);
+      limbs.bodyGroup.rotation.x += (pitch - limbs.bodyGroup.rotation.x) * Math.min(1, dt * 7);
+      limbs.bodyGroup.rotation.z = Math.sin(phase * 0.5) * (moving ? 0.025 : 0.045);
+      if (moving) {
+        const kick = Math.sin(phase * 2) * 0.22;
+        limbs.legLeft.rotation.x = 0.18 + kick;
+        limbs.legRight.rotation.x = 0.18 - kick;
+        limbs.armLeft.rotation.x = -1.3 + stroke * 0.9;
+        limbs.armRight.rotation.x = -1.3 + stroke * 0.9;
+        limbs.armLeft.rotation.z = -0.22 - stroke * 0.72;
+        limbs.armRight.rotation.z = 0.22 + stroke * 0.72;
+      } else {
+        limbs.legLeft.rotation.x = 0.28 + Math.sin(phase) * 0.16;
+        limbs.legRight.rotation.x = 0.28 + Math.sin(phase + Math.PI) * 0.16;
+        limbs.armLeft.rotation.x = -0.45 + Math.sin(phase) * 0.18;
+        limbs.armRight.rotation.x = -0.45 + Math.sin(phase + Math.PI) * 0.18;
+        limbs.armLeft.rotation.z = -0.62;
+        limbs.armRight.rotation.z = 0.62;
+      }
     } else if (toolAction.kind !== 'none' && limbs) {
       const progress = toolAction.elapsed / toolAction.duration;
       const strike = Math.sin(progress * Math.PI);
@@ -757,7 +769,7 @@ export function Player() {
   return (
     <group ref={groupRef} position={initialPlayer.pos} rotation={[0, initialPlayer.yaw, 0]}>
       {/* 阴影圆盘：贴地（不受身体颠簸影响） */}
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.02, 0]}>
+      <mesh visible={!swimming} rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.02, 0]}>
         <circleGeometry args={[0.5, 24]} />
         <meshBasicMaterial color="#000000" transparent opacity={0.25} />
       </mesh>
