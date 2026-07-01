@@ -381,27 +381,28 @@ export function Player() {
     } else if (swimming && limbs) {
       walkPhase.current += dt * (moving ? 5.8 : 3.2);
       const phase = walkPhase.current;
-      const stroke = (Math.sin(phase) + 1) * 0.5;
-      const pitch = moving ? -1.12 : -0.72;
-      const depth = moving ? -0.34 : -0.2;
-      limbs.bodyGroup.position.y += (depth + Math.sin(phase * 0.5) * 0.035 - limbs.bodyGroup.position.y) * Math.min(1, dt * 7);
+      const pitch = moving ? -0.48 : -0.16;
+      const height = moving ? 0.22 : 0.12;
+      limbs.bodyGroup.position.y += (height + Math.sin(phase * 0.5) * 0.025 - limbs.bodyGroup.position.y) * Math.min(1, dt * 7);
       limbs.bodyGroup.rotation.x += (pitch - limbs.bodyGroup.rotation.x) * Math.min(1, dt * 7);
-      limbs.bodyGroup.rotation.z = Math.sin(phase * 0.5) * (moving ? 0.025 : 0.045);
+      limbs.bodyGroup.rotation.z = Math.sin(phase * 0.5) * (moving ? 0.018 : 0.025);
       if (moving) {
-        const kick = Math.sin(phase * 2) * 0.22;
-        limbs.legLeft.rotation.x = 0.18 + kick;
-        limbs.legRight.rotation.x = 0.18 - kick;
-        limbs.armLeft.rotation.x = -1.3 + stroke * 0.9;
-        limbs.armRight.rotation.x = -1.3 + stroke * 0.9;
-        limbs.armLeft.rotation.z = -0.22 - stroke * 0.72;
-        limbs.armRight.rotation.z = 0.22 + stroke * 0.72;
+        const kick = Math.sin(phase * 2) * 0.16;
+        const leftStroke = (Math.sin(phase) + 1) * 0.5;
+        const rightStroke = (Math.sin(phase + Math.PI) + 1) * 0.5;
+        limbs.legLeft.rotation.x = 0.08 + kick;
+        limbs.legRight.rotation.x = 0.08 - kick;
+        limbs.armLeft.rotation.x = -1.12 + leftStroke * 1.05;
+        limbs.armRight.rotation.x = -1.12 + rightStroke * 1.05;
+        limbs.armLeft.rotation.z = -0.18 - leftStroke * 0.78;
+        limbs.armRight.rotation.z = 0.18 + rightStroke * 0.78;
       } else {
-        limbs.legLeft.rotation.x = 0.28 + Math.sin(phase) * 0.16;
-        limbs.legRight.rotation.x = 0.28 + Math.sin(phase + Math.PI) * 0.16;
-        limbs.armLeft.rotation.x = -0.45 + Math.sin(phase) * 0.18;
-        limbs.armRight.rotation.x = -0.45 + Math.sin(phase + Math.PI) * 0.18;
-        limbs.armLeft.rotation.z = -0.62;
-        limbs.armRight.rotation.z = 0.62;
+        limbs.legLeft.rotation.x = 0.12 + Math.sin(phase) * 0.1;
+        limbs.legRight.rotation.x = 0.12 + Math.sin(phase + Math.PI) * 0.1;
+        limbs.armLeft.rotation.x = -0.32 + Math.sin(phase) * 0.12;
+        limbs.armRight.rotation.x = -0.32 + Math.sin(phase + Math.PI) * 0.12;
+        limbs.armLeft.rotation.z = -0.48;
+        limbs.armRight.rotation.z = 0.48;
       }
     } else if (toolAction.kind !== 'none' && limbs) {
       const progress = toolAction.elapsed / toolAction.duration;

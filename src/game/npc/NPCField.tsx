@@ -4,6 +4,7 @@ import * as THREE from 'three';
 import { NPCS, npcPositionAt, type NpcDef } from '../../config/npcs.ts';
 import { useGameStore } from '../../store/useGameStore.ts';
 import { groundHeight } from '../../systems/terrain.ts';
+import { getStaticObstacles, type StaticObstacle } from '../../systems/staticObstacles.ts';
 import { useOcclusionOpacity } from '../controllers/useOcclusionOpacity.ts';
 import { useGameTimeRef } from '../useGameTimeRef.ts';
 import { KenneyNPC, type NpcActivity } from '../world/KenneyCharacters.tsx';
@@ -12,6 +13,8 @@ import { BuildingYard, Chimney, LowPolyBuilding, Planters, PorchColumns } from '
 const NPC_CHARACTER_MAP: Record<string, number> = { mira: 1, tao: 2, lina: 3 };
 const NPC_YARD_VARIANT: Record<string, number> = { mira: 0, tao: 1, lina: 2 };
 const NPC_STYLE_MAP = { mira: 'mira', tao: 'tao', lina: 'lina' } as const;
+const NPC_MODEL_YAW_OFFSET = Math.PI;
+const NPC_BODY_RADIUS = 0.52;
 
 export function NPCField() {
   const scene = useGameStore((s) => s.scene);
@@ -79,17 +82,31 @@ function NPC({ npc }: { npc: NpcDef }) {
   const activityRef = useRef<NpcActivity>('idle');
   const workPropRef = useRef<THREE.Group>(null);
   const restPropRef = useRef<THREE.Group>(null);
+  const previousPositionRef = useRef(new THREE.Vector2());
+  const initializedRef = useRef(false);
+  const facingRef = useRef(0);
   const gameTimeRef = useGameTimeRef();
+  const obstacles = useMemo(() => getStaticObstacles(), []);
 
-  useFrame((state) => {
+  useFrame((state, delta) => {
     const t = gameTimeRef.current;
     const pos = npcPositionAt(npc, t);
     const ahead = npcPositionAt(npc, t + 0.25);
-    const x = pos[0], z = pos[2];
+    const adjusted = avoidRouteObstacles(pos[0], pos[2], ahead[0] - pos[0], ahead[2] - pos[2], obstacles, npc.id);
+    const x = adjusted.x, z = adjusted.y;
     const y = groundHeight(x, z);
-    const dx = ahead[0] - x;
-    const dz = ahead[2] - z;
-    movingRef.current = Math.hypot(dx, dz) > 0.015;
+    const dx = initializedRef.current ? x - previousPositionRef.current.x : 0;
+    const dz = initializedRef.current ? z - previousPositionRef.current.y : 0;
+    const frameDistance = Math.hypot(dx, dz);
+    movingRef.current = frameDistance > 0.00008;
+    if (!initializedRef.current) {
+      facingRef.current = Math.atan2(ahead[0] - x, ahead[2] - z) + NPC_MODEL_YAW_OFFSET;
+      initializedRef.current = true;
+    } else if (movingRef.current) {
+      const targetYaw = Math.atan2(dx, dz) + NPC_MODEL_YAW_OFFSET;
+      facingRef.current = lerpAngle(facingRef.current, targetYaw, Math.min(1, delta * 10));
+    }
+    previousPositionRef.current.set(x, z);
     const hour = t / 60;
     const waveCycle = (state.clock.elapsedTime + npc.homePos[0] * 0.7 + npc.homePos[2] * 0.3) % 14;
     activityRef.current = movingRef.current
@@ -101,10 +118,9 @@ function NPC({ npc }: { npc: NpcDef }) {
           : hour < 8 || hour >= 18
             ? 'rest'
             : 'idle';
-    const yaw = movingRef.current ? Math.atan2(dx, dz) : groupRef.current?.rotation.y ?? 0;
     if (groupRef.current) {
       groupRef.current.position.set(x, y, z);
-      groupRef.current.rotation.set(0, yaw, 0);
+      groupRef.current.rotation.set(0, facingRef.current, 0);
     }
     if (workPropRef.current) {
       const working = activityRef.current === 'work';
@@ -146,6 +162,39 @@ function NPC({ npc }: { npc: NpcDef }) {
       </group>
     </group>
   );
+}
+
+function avoidRouteObstacles(
+  x: number,
+  z: number,
+  dx: number,
+  dz: number,
+  obstacles: StaticObstacle[],
+  npcId: NpcDef['id'],
+): THREE.Vector2 {
+  const result = new THREE.Vector2(x, z);
+  const length = Math.hypot(dx, dz);
+  if (length < 0.0001) return result;
+  const side = npcId === 'tao' ? -1 : 1;
+  const perpendicular = new THREE.Vector2(-dz / length * side, dx / length * side);
+
+  for (const obstacle of obstacles) {
+    const clearance = obstacle.radius + NPC_BODY_RADIUS + 0.42;
+    const ox = result.x - obstacle.pos[0];
+    const oz = result.y - obstacle.pos[2];
+    const distance = Math.hypot(ox, oz);
+    if (distance >= clearance) continue;
+    const influence = 1 - distance / clearance;
+    result.addScaledVector(perpendicular, influence * clearance * 1.35);
+  }
+  return result;
+}
+
+function lerpAngle(current: number, target: number, amount: number): number {
+  let delta = target - current;
+  while (delta > Math.PI) delta -= Math.PI * 2;
+  while (delta < -Math.PI) delta += Math.PI * 2;
+  return current + delta * amount;
 }
 
 function NpcWorkProp({ npcId }: { npcId: NpcDef['id'] }) {
