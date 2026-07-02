@@ -141,6 +141,8 @@ export function Player() {
   });
   const swimMovingRef = useRef(false);
   const swimBurstRef = useRef(0);
+  const swimSoundRef = useRef(0);
+  const movementBlendRef = useRef(0);
   const toolActionRef = useRef({
     kind: 'none' as 'none' | 'axe' | 'shovel' | 'net',
     elapsed: 0,
@@ -204,6 +206,7 @@ export function Player() {
     tmpDir.set(mx, 0, mz);
     const moving = tmpDir.lengthSq() > 1e-4;
     if (moving) tmpDir.normalize();
+    movementBlendRef.current = THREE.MathUtils.damp(movementBlendRef.current, moving ? 1 : 0, 11, dt);
     swimMovingRef.current = swimming && moving && !diving;
 
     const speed = swimming ? WORLD.walkSpeed * 0.62 : keys.run ? WORLD.runSpeed : WORLD.walkSpeed;
@@ -387,6 +390,11 @@ export function Player() {
       limbs.bodyGroup.rotation.x += (pitch - limbs.bodyGroup.rotation.x) * Math.min(1, dt * 7);
       limbs.bodyGroup.rotation.z = Math.sin(phase * 0.5) * (moving ? 0.018 : 0.025);
       if (moving) {
+        swimSoundRef.current += dt;
+        if (swimSoundRef.current >= 0.72) {
+          swimSoundRef.current -= 0.72;
+          soundManager.play('swimStroke');
+        }
         const kick = Math.sin(phase * 2) * 0.16;
         const leftStroke = (Math.sin(phase) + 1) * 0.5;
         const rightStroke = (Math.sin(phase + Math.PI) + 1) * 0.5;
@@ -423,7 +431,7 @@ export function Player() {
       footstepDist.current -= stepInterval;
         soundManager.play('footstep');
       }
-      const swing = 0.5;
+      const swing = 0.5 * movementBlendRef.current;
       if (limbs) {
         const bob = Math.abs(Math.sin(walkPhase.current)) * 0.08;
         limbs.bodyGroup.position.y = bob;
@@ -691,6 +699,7 @@ export function Player() {
                 stopSwimming();
                 diveRef.current.active = false;
                 swimBurstRef.current = 1;
+                soundManager.play('splash');
                 g.position.set(target.pos[0], walkingHeight(target.pos[0], target.pos[1]), target.pos[1]);
               } else {
                 const targetYaw = Math.atan2(target.pos[0] - g.position.x, target.pos[1] - g.position.z);
@@ -701,6 +710,7 @@ export function Player() {
                 diveRef.current.from.copy(g.position);
                 diveRef.current.to.set(target.pos[0], SWIM_HEIGHT, target.pos[1]);
                 swimBurstRef.current = 1;
+                soundManager.play('splash');
                 startSwimming();
               }
             }

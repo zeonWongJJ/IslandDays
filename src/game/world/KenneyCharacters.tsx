@@ -246,20 +246,23 @@ export function KenneyNPC({
 }) {
   const rootRef = useRef<THREE.Group>(null);
   const npcLimbRefs = useRef<PlayerLimbRefs | null>(null);
+  const walkBlendRef = useRef(0);
 
-  useFrame((state) => {
+  useFrame((state, delta) => {
     const limbs = npcLimbRefs.current;
     const t = state.clock.elapsedTime + phaseOffset;
     const isMoving = movingRef?.current ?? moving;
     const activity = isMoving ? 'walk' : activityRef?.current ?? 'idle';
+    walkBlendRef.current = THREE.MathUtils.damp(walkBlendRef.current, isMoving ? 1 : 0, 9, delta);
+    const walkBlend = walkBlendRef.current;
     const parts = {
       legLeft: limbs?.legLeft ?? null,
       legRight: limbs?.legRight ?? null,
       armLeft: limbs?.armLeft ?? null,
       armRight: limbs?.armRight ?? null,
     };
-    if (activity === 'walk') {
-      animateCharacterParts(parts, t * 7.2, 1);
+    if (activity === 'walk' || walkBlend > 0.04) {
+      animateCharacterParts(parts, t * 7.2, walkBlend);
     } else if (activity === 'wave') {
       if (parts.legLeft) parts.legLeft.rotation.x *= 0.82;
       if (parts.legRight) parts.legRight.rotation.x *= 0.82;
@@ -292,9 +295,11 @@ export function KenneyNPC({
     }
     if (rootRef.current) {
       const restOffset = activity === 'rest' ? -0.24 : 0;
-      rootRef.current.position.y = restOffset + (isMoving ? Math.abs(Math.sin(t * 7.2)) * 0.045 : Math.sin(t * 1.8) * 0.012);
+      const walkBob = Math.abs(Math.sin(t * 7.2)) * 0.045 * walkBlend;
+      const idleBob = Math.sin(t * 1.8) * 0.012 * (1 - walkBlend);
+      rootRef.current.position.y = restOffset + walkBob + idleBob;
       rootRef.current.rotation.x = activity === 'rest' ? -0.08 : 0;
-      rootRef.current.rotation.z = isMoving ? Math.sin(t * 7.2) * 0.03 : Math.sin(t * 1.2) * 0.006;
+      rootRef.current.rotation.z = Math.sin(t * 7.2) * 0.03 * walkBlend + Math.sin(t * 1.2) * 0.006 * (1 - walkBlend);
     }
   });
 

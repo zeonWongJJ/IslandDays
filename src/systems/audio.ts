@@ -84,6 +84,8 @@ class SoundManager {
       case 'rainStop': this.stopRain(); break;
       case 'forestAmbient': this.playForestAmbient(); break;
       case 'waveAmbient': this.playWaveAmbient(); break;
+      case 'splash': this.playSplash(0.42); break;
+      case 'swimStroke': this.playSplash(0.12); break;
     }
   }
 
@@ -98,6 +100,19 @@ class SoundManager {
     f.type = 'lowpass';
     f.frequency.value = 800;
     src.connect(f).connect(g);
+    src.start();
+  }
+
+  private playSplash(volume: number) {
+    const ctx = this.ensure();
+    const src = ctx.createBufferSource();
+    src.buffer = this.noise(0.24, 0.8);
+    const filter = ctx.createBiquadFilter();
+    filter.type = 'bandpass';
+    filter.frequency.value = 1100;
+    filter.Q.value = 0.7;
+    const g = this.gain(volume, 0.24);
+    src.connect(filter).connect(g);
     src.start();
   }
 

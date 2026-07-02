@@ -2,8 +2,10 @@ import { useFrame } from '@react-three/fiber';
 import { useMemo, useRef } from 'react';
 import * as THREE from 'three';
 import { NPCS, npcPositionAt, type NpcDef } from '../../config/npcs.ts';
+import { HOUSE, TREE } from '../../config/constants.ts';
+import { MAP_LAYOUT } from '../../config/mapLayout.ts';
 import { useGameStore } from '../../store/useGameStore.ts';
-import { groundHeight } from '../../systems/terrain.ts';
+import { blocksWalking, groundHeight, nearestWalkable } from '../../systems/terrain.ts';
 import { getStaticObstacles, type StaticObstacle } from '../../systems/staticObstacles.ts';
 import { useOcclusionOpacity } from '../controllers/useOcclusionOpacity.ts';
 import { useGameTimeRef } from '../useGameTimeRef.ts';
@@ -18,6 +20,27 @@ const NPC_BODY_RADIUS = 0.52;
 
 export function NPCField() {
   const scene = useGameStore((s) => s.scene);
+  const trees = useGameStore((s) => s.trees);
+  const navigationObstacles = useMemo<StaticObstacle[]>(() => [
+    ...getStaticObstacles(),
+    { id: 'player-house', label: '玩家房屋', pos: HOUSE.pos, radius: HOUSE.radius + 0.4 },
+    { id: 'shop-building', label: '商店', pos: MAP_LAYOUT.shop.pos, radius: 3.7 },
+    { id: 'museum-building', label: '博物馆', pos: MAP_LAYOUT.museum.pos, radius: 4.5 },
+    ...NPCS.map((resident) => ({
+      id: `${resident.id}-house`,
+      label: '居民房屋',
+      pos: resident.homePos,
+      radius: 3.45,
+    })),
+    ...trees
+      .filter((tree) => tree.state === 'intact')
+      .map((tree) => ({
+        id: tree.id,
+        label: '树木',
+        pos: tree.pos,
+        radius: TREE.radius + 0.2,
+      })),
+  ], [trees]);
   if (scene !== 'island') return null;
 
   return (
@@ -25,7 +48,7 @@ export function NPCField() {
       {NPCS.map((npc) => (
         <group key={npc.id}>
           <NPCHouse npc={npc} />
-          <NPC npc={npc} />
+          <NPC npc={npc} obstacles={navigationObstacles} />
         </group>
       ))}
     </group>
@@ -76,33 +99,90 @@ function NPCHouse({ npc }: { npc: NpcDef }) {
   );
 }
 
-function NPC({ npc }: { npc: NpcDef }) {
+function NPC({ npc, obstacles }: { npc: NpcDef; obstacles: StaticObstacle[] }) {
   const groupRef = useRef<THREE.Group>(null);
+  const debugLineRef = useRef<THREE.Line>(null);
+  const debugWaypointRef = useRef<THREE.Mesh>(null);
   const movingRef = useRef(false);
   const activityRef = useRef<NpcActivity>('idle');
   const workPropRef = useRef<THREE.Group>(null);
   const restPropRef = useRef<THREE.Group>(null);
   const previousPositionRef = useRef(new THREE.Vector2());
+  const navigatorPositionRef = useRef(new THREE.Vector2());
+  const waypointRef = useRef(new THREE.Vector2());
   const initializedRef = useRef(false);
   const facingRef = useRef(0);
+  const avoidanceSideRef = useRef(npc.id === 'tao' ? -1 : 1);
+  const stuckRef = useRef({ elapsed: 0, bestDistance: Number.POSITIVE_INFINITY, recoveries: 0 });
   const gameTimeRef = useGameTimeRef();
-  const obstacles = useMemo(() => getStaticObstacles(), []);
+  const npcObstacles = useMemo(
+    () => obstacles.filter((obstacle) => obstacle.id !== `${npc.id}-house`),
+    [npc.id, obstacles],
+  );
+  const debugGeometry = useMemo(() => {
+    const geometry = new THREE.BufferGeometry();
+    geometry.setAttribute('position', new THREE.Float32BufferAttribute(new Float32Array(9), 3));
+    return geometry;
+  }, []);
+  const debugLine = useMemo(
+    () => new THREE.Line(debugGeometry, new THREE.LineBasicMaterial({ color: '#ffcf40' })),
+    [debugGeometry],
+  );
 
   useFrame((state, delta) => {
     const t = gameTimeRef.current;
-    const pos = npcPositionAt(npc, t);
-    const ahead = npcPositionAt(npc, t + 0.25);
-    const adjusted = avoidRouteObstacles(pos[0], pos[2], ahead[0] - pos[0], ahead[2] - pos[2], obstacles, npc.id);
-    const x = adjusted.x, z = adjusted.y;
+    const destination = npcPositionAt(npc, t);
+    if (!initializedRef.current) {
+      const safe = nearestWalkable(destination[0], destination[2]);
+      navigatorPositionRef.current.set(safe[0], safe[2]);
+      previousPositionRef.current.copy(navigatorPositionRef.current);
+      initializedRef.current = true;
+    }
+
+    const current = navigatorPositionRef.current;
+    const target = new THREE.Vector2(destination[0], destination[2]);
+    const targetDistance = current.distanceTo(target);
+    const waypoint = chooseNpcWaypoint(current, target, npcObstacles, avoidanceSideRef.current);
+    waypointRef.current.copy(waypoint);
+    const movement = waypoint.clone().sub(current);
+    const movementDistance = movement.length();
+    const step = Math.min(movementDistance, delta * 1.35);
+    if (movementDistance > 0.001) {
+      movement.multiplyScalar(step / movementDistance);
+      const candidateX = current.x + movement.x;
+      const candidateZ = current.y + movement.y;
+      if (!blocksWalking(candidateX, candidateZ)) current.set(candidateX, candidateZ);
+    }
+
+    const stuck = stuckRef.current;
+    if (targetDistance + 0.08 < stuck.bestDistance) {
+      stuck.bestDistance = targetDistance;
+      stuck.elapsed = 0;
+    } else if (targetDistance > 0.75) {
+      stuck.elapsed += delta;
+    }
+    if (stuck.elapsed > 1.6) {
+      avoidanceSideRef.current *= -1;
+      stuck.elapsed = 0;
+      stuck.bestDistance = targetDistance;
+      stuck.recoveries += 1;
+      if (stuck.recoveries >= 3) {
+        const safe = nearestWalkable(destination[0], destination[2]);
+        current.set(safe[0], safe[2]);
+        stuck.recoveries = 0;
+      }
+    } else if (targetDistance < 0.5) {
+      stuck.recoveries = 0;
+      stuck.bestDistance = targetDistance;
+    }
+
+    const x = current.x, z = current.y;
     const y = groundHeight(x, z);
-    const dx = initializedRef.current ? x - previousPositionRef.current.x : 0;
-    const dz = initializedRef.current ? z - previousPositionRef.current.y : 0;
+    const dx = x - previousPositionRef.current.x;
+    const dz = z - previousPositionRef.current.y;
     const frameDistance = Math.hypot(dx, dz);
     movingRef.current = frameDistance > 0.00008;
-    if (!initializedRef.current) {
-      facingRef.current = Math.atan2(ahead[0] - x, ahead[2] - z) + NPC_MODEL_YAW_OFFSET;
-      initializedRef.current = true;
-    } else if (movingRef.current) {
+    if (movingRef.current) {
       const targetYaw = Math.atan2(dx, dz) + NPC_MODEL_YAW_OFFSET;
       facingRef.current = lerpAngle(facingRef.current, targetYaw, Math.min(1, delta * 10));
     }
@@ -128,66 +208,85 @@ function NPC({ npc }: { npc: NpcDef }) {
       workPropRef.current.rotation.z = working ? Math.sin(t * 0.22) * 0.08 : 0;
     }
     if (restPropRef.current) restPropRef.current.visible = activityRef.current === 'rest';
+    const debugVisible = navigationDebugEnabled();
+    if (debugLineRef.current) debugLineRef.current.visible = debugVisible;
+    const positions = debugGeometry.getAttribute('position') as THREE.BufferAttribute;
+    positions.setXYZ(0, x, y + 0.08, z);
+    positions.setXYZ(1, waypoint.x, groundHeight(waypoint.x, waypoint.y) + 0.08, waypoint.y);
+    positions.setXYZ(2, destination[0], groundHeight(destination[0], destination[2]) + 0.08, destination[2]);
+    positions.needsUpdate = true;
+    debugGeometry.computeBoundingSphere();
+    if (debugWaypointRef.current) {
+      debugWaypointRef.current.visible = debugVisible;
+      debugWaypointRef.current.position.set(waypoint.x, groundHeight(waypoint.x, waypoint.y) + 0.18, waypoint.y);
+    }
   });
 
   return (
-    <group ref={groupRef}>
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.02, 0]}>
-        <circleGeometry args={[0.45, 20]} />
-        <meshBasicMaterial color="#000000" transparent opacity={0.2} />
+    <>
+      <group ref={groupRef}>
+        <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.02, 0]}>
+          <circleGeometry args={[0.45, 20]} />
+          <meshBasicMaterial color="#000000" transparent opacity={0.2} />
+        </mesh>
+        <KenneyNPC
+          characterIndex={NPC_CHARACTER_MAP[npc.id] ?? 0}
+          movingRef={movingRef}
+          activityRef={activityRef}
+          phaseOffset={npc.homePos[0] * 0.21 + npc.homePos[2] * 0.13}
+          style={NPC_STYLE_MAP[npc.id]}
+        />
+        <group ref={workPropRef}>
+          <NpcWorkProp npcId={npc.id} />
+        </group>
+        <group ref={restPropRef} position={[0, 0.18, -0.12]}>
+          <mesh position={[0, 0.16, 0]} castShadow receiveShadow>
+            <boxGeometry args={[0.72, 0.12, 0.52]} />
+            <meshStandardMaterial color="#8a603d" flatShading roughness={1} />
+          </mesh>
+          <mesh position={[-0.25, -0.05, 0]} castShadow>
+            <boxGeometry args={[0.1, 0.36, 0.1]} />
+            <meshStandardMaterial color="#604126" flatShading roughness={1} />
+          </mesh>
+          <mesh position={[0.25, -0.05, 0]} castShadow>
+            <boxGeometry args={[0.1, 0.36, 0.1]} />
+            <meshStandardMaterial color="#604126" flatShading roughness={1} />
+          </mesh>
+        </group>
+      </group>
+      <primitive ref={debugLineRef} object={debugLine} />
+      <mesh ref={debugWaypointRef}>
+        <sphereGeometry args={[0.14, 8, 6]} />
+        <meshBasicMaterial color="#ff5b45" depthTest={false} />
       </mesh>
-      <KenneyNPC
-        characterIndex={NPC_CHARACTER_MAP[npc.id] ?? 0}
-        movingRef={movingRef}
-        activityRef={activityRef}
-        phaseOffset={npc.homePos[0] * 0.21 + npc.homePos[2] * 0.13}
-        style={NPC_STYLE_MAP[npc.id]}
-      />
-      <group ref={workPropRef}>
-        <NpcWorkProp npcId={npc.id} />
-      </group>
-      <group ref={restPropRef} position={[0, 0.18, -0.12]}>
-        <mesh position={[0, 0.16, 0]} castShadow receiveShadow>
-          <boxGeometry args={[0.72, 0.12, 0.52]} />
-          <meshStandardMaterial color="#8a603d" flatShading roughness={1} />
-        </mesh>
-        <mesh position={[-0.25, -0.05, 0]} castShadow>
-          <boxGeometry args={[0.1, 0.36, 0.1]} />
-          <meshStandardMaterial color="#604126" flatShading roughness={1} />
-        </mesh>
-        <mesh position={[0.25, -0.05, 0]} castShadow>
-          <boxGeometry args={[0.1, 0.36, 0.1]} />
-          <meshStandardMaterial color="#604126" flatShading roughness={1} />
-        </mesh>
-      </group>
-    </group>
+    </>
   );
 }
 
-function avoidRouteObstacles(
-  x: number,
-  z: number,
-  dx: number,
-  dz: number,
+function chooseNpcWaypoint(
+  current: THREE.Vector2,
+  target: THREE.Vector2,
   obstacles: StaticObstacle[],
-  npcId: NpcDef['id'],
+  side: number,
 ): THREE.Vector2 {
-  const result = new THREE.Vector2(x, z);
-  const length = Math.hypot(dx, dz);
-  if (length < 0.0001) return result;
-  const side = npcId === 'tao' ? -1 : 1;
-  const perpendicular = new THREE.Vector2(-dz / length * side, dx / length * side);
-
+  const direction = target.clone().sub(current);
+  const length = direction.length();
+  if (length < 0.05) return target;
+  direction.multiplyScalar(1 / length);
+  let nearest: { obstacle: StaticObstacle; along: number; clearance: number } | null = null;
   for (const obstacle of obstacles) {
-    const clearance = obstacle.radius + NPC_BODY_RADIUS + 0.42;
-    const ox = result.x - obstacle.pos[0];
-    const oz = result.y - obstacle.pos[2];
-    const distance = Math.hypot(ox, oz);
-    if (distance >= clearance) continue;
-    const influence = 1 - distance / clearance;
-    result.addScaledVector(perpendicular, influence * clearance * 1.35);
+    const toObstacle = new THREE.Vector2(obstacle.pos[0] - current.x, obstacle.pos[2] - current.y);
+    const along = toObstacle.dot(direction);
+    if (along <= 0 || along >= Math.min(length, 7)) continue;
+    const perpendicularDistance = Math.abs(toObstacle.x * direction.y - toObstacle.y * direction.x);
+    const clearance = obstacle.radius + NPC_BODY_RADIUS + 0.55;
+    if (perpendicularDistance >= clearance) continue;
+    if (!nearest || along < nearest.along) nearest = { obstacle, along, clearance };
   }
-  return result;
+  if (!nearest) return target;
+  const perpendicular = new THREE.Vector2(-direction.y * side, direction.x * side);
+  return new THREE.Vector2(nearest.obstacle.pos[0], nearest.obstacle.pos[2])
+    .addScaledVector(perpendicular, nearest.clearance);
 }
 
 function lerpAngle(current: number, target: number, amount: number): number {
@@ -195,6 +294,11 @@ function lerpAngle(current: number, target: number, amount: number): number {
   while (delta > Math.PI) delta -= Math.PI * 2;
   while (delta < -Math.PI) delta += Math.PI * 2;
   return current + delta * amount;
+}
+
+function navigationDebugEnabled(): boolean {
+  const settings = (window as unknown as Record<string, unknown>).__settings as { navigationDebug?: boolean } | undefined;
+  return settings?.navigationDebug === true;
 }
 
 function NpcWorkProp({ npcId }: { npcId: NpcDef['id'] }) {

@@ -6,9 +6,10 @@ interface Settings {
   volume: number;
   fov: number;
   sensitivity: number;
+  navigationDebug: boolean;
 }
 
-const defaults: Settings = { volume: 80, fov: 75, sensitivity: 1.0 };
+const defaults: Settings = { volume: 80, fov: 75, sensitivity: 1.0, navigationDebug: false };
 
 function loadSettings(): Settings {
   try {
@@ -29,7 +30,7 @@ export function SettingsPanel({ onClose }: { onClose: () => void }) {
 
   useEffect(() => { saveSettings(settings); }, [settings]);
 
-  const set = (key: keyof Settings, value: number) =>
+  const set = <K extends keyof Settings>(key: K, value: Settings[K]) =>
     setSettings((s) => ({ ...s, [key]: value }));
 
   return (
@@ -55,6 +56,16 @@ export function SettingsPanel({ onClose }: { onClose: () => void }) {
         <input type="range" min="0.5" max="2.0" step="0.1" value={settings.sensitivity}
           onChange={(e) => set('sensitivity', +e.target.value)} />
         <span>{settings.sensitivity.toFixed(1)}</span>
+      </div>
+      <div className="settings-row">
+        <label htmlFor="navigation-debug">NPC 路径调试</label>
+        <input
+          id="navigation-debug"
+          type="checkbox"
+          checked={settings.navigationDebug}
+          onChange={(event) => set('navigationDebug', event.target.checked)}
+        />
+        <span>{settings.navigationDebug ? '开启' : '关闭'}</span>
       </div>
     </div>
   );
