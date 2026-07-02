@@ -1,11 +1,13 @@
 import { useLayoutEffect, useMemo, useRef } from 'react';
 import * as THREE from 'three';
 import { useFrame } from '@react-three/fiber';
+import { useGLTF } from '@react-three/drei';
 import { WORLD } from '../../config/constants.ts';
 import { MAP_LAYOUT } from '../../config/mapLayout.ts';
 import { groundHeight, groundKind } from '../../systems/terrain.ts';
 import { acceptsGrassDecoration, isFlatDrySurface } from '../../systems/placement.ts';
 import { useGameRefs } from '../controllers/gameRefsContext.ts';
+import { KenneyBush } from './KenneyModels.tsx';
 
 function makeRng(seed: number) {
   let s = seed >>> 0 || 1;
@@ -39,9 +41,14 @@ interface GrassInstance {
   z: number;
   s: number;
   rot: number;
+  variant: 0 | 1 | 2;
 }
 
-interface LowGrassInstance extends GrassInstance {
+interface LowGrassInstance {
+  x: number;
+  z: number;
+  s: number;
+  rot: number;
   lean: number;
 }
 
@@ -76,8 +83,9 @@ export function Decorations() {
   const rockRef = useRef<THREE.InstancedMesh>(null);
   const beachRockRef = useRef<THREE.InstancedMesh>(null);
   const cliffPlantRef = useRef<THREE.InstancedMesh>(null);
+  const leafLitterRef = useRef<THREE.InstancedMesh>(null);
 
-  const { rocks, flowers, grasses, groundGrassA, groundGrassB, beachRocks, cliffPlants } = useMemo(() => {
+  const { rocks, flowers, grasses, groundGrassA, groundGrassB, beachRocks, cliffPlants, bushes, leafLitter } = useMemo(() => {
     const rng = makeRng(20240620);
     const half = WORLD.size / 2;
     const rocks: { x: number; z: number; s: number; rot: number }[] = [];
@@ -87,6 +95,8 @@ export function Decorations() {
     const groundGrassB: LowGrassInstance[] = [];
     const beachRocks: { x: number; z: number; s: number; rot: number }[] = [];
     const cliffPlants: { x: number; z: number; s: number; rot: number }[] = [];
+    const bushes: { x: number; z: number; s: number; rot: number; variant: number }[] = [];
+    const leafLitter: { x: number; z: number; sx: number; sz: number; rot: number }[] = [];
 
     const acceptsGrass = (x: number, z: number) => {
       if (Math.hypot(x, z) < 2.5) return false;
@@ -102,12 +112,24 @@ export function Decorations() {
         color: FLOWER_COLORS[Math.floor(rng() * FLOWER_COLORS.length)],
       });
     };
-    const addGrassBlade = (x: number, z: number, scale = 1) => {
+    const grassVariantAt = (x: number, z: number): 0 | 1 | 2 => {
+      const forest = MAP_LAYOUT.zones.westForest;
+      const river = MAP_LAYOUT.zones.northRiver;
+      if (Math.hypot(x - forest.center[0], z - forest.center[2]) < forest.radius * 1.18) return 2;
+      if (Math.hypot(x - river.center[0], z - river.center[2]) < river.radius * 1.08) return 1;
+      return 0;
+    };
+    const addGrassBlade = (x: number, z: number, scale = 1, forcedVariant?: 0 | 1 | 2) => {
       if (!acceptsGrass(x, z)) return;
-      grasses.push({ x, z, s: (0.6 + rng() * 0.8) * scale, rot: rng() * Math.PI * 2 });
+      const variant = forcedVariant ?? grassVariantAt(x, z);
+      const zoneScale = variant === 2 ? 0.78 : variant === 1 ? 0.86 : 0.62;
+      grasses.push({ x, z, s: (0.62 + rng() * 0.72) * scale * zoneScale, rot: rng() * Math.PI * 2, variant });
     };
     const addLowGrass = (x: number, z: number, scale = 1) => {
       if (!acceptsGrass(x, z)) return;
+      const village = MAP_LAYOUT.zones.village;
+      const inVillage = Math.hypot(x - village.center[0], z - village.center[2]) < village.radius * 1.08;
+      if (inVillage && rng() > 0.32) return;
       const blade = {
         x,
         z,
@@ -155,13 +177,13 @@ export function Decorations() {
     for (let i = 0; i < 850; i++) {
       const angle = rng() * Math.PI * 2;
       const r = Math.sqrt(rng()) * forest.radius;
-      addGrassBlade(forest.center[0] + Math.cos(angle) * r, forest.center[2] + Math.sin(angle) * r, 1.16);
+      addGrassBlade(forest.center[0] + Math.cos(angle) * r, forest.center[2] + Math.sin(angle) * r, 1.16, 2);
     }
     const riverZone = MAP_LAYOUT.zones.northRiver;
     for (let i = 0; i < 420; i++) {
       const angle = rng() * Math.PI * 2;
       const r = Math.sqrt(rng()) * riverZone.radius;
-      addGrassBlade(riverZone.center[0] + Math.cos(angle) * r, riverZone.center[2] + Math.sin(angle) * r, 0.92);
+      addGrassBlade(riverZone.center[0] + Math.cos(angle) * r, riverZone.center[2] + Math.sin(angle) * r, 0.92, 1);
     }
     for (let i = 0; i < 3200; i++) {
       const x = (rng() * 2 - 1) * half * 0.96;
@@ -172,6 +194,28 @@ export function Decorations() {
       const angle = rng() * Math.PI * 2;
       const r = Math.sqrt(rng()) * forest.radius * 1.1;
       addLowGrass(forest.center[0] + Math.cos(angle) * r, forest.center[2] + Math.sin(angle) * r, 1.18);
+    }
+    for (let i = 0; i < 42; i++) {
+      const angle = rng() * Math.PI * 2;
+      const r = 5 + Math.sqrt(rng()) * forest.radius * 1.05;
+      const x = forest.center[0] + Math.cos(angle) * r;
+      const z = forest.center[2] + Math.sin(angle) * r;
+      if (!acceptsGrass(x, z)) continue;
+      bushes.push({ x, z, s: 0.55 + rng() * 0.55, rot: rng() * Math.PI * 2, variant: Math.floor(rng() * 3) });
+    }
+    for (let i = 0; i < 150; i++) {
+      const angle = rng() * Math.PI * 2;
+      const r = Math.sqrt(rng()) * forest.radius * 1.12;
+      const x = forest.center[0] + Math.cos(angle) * r;
+      const z = forest.center[2] + Math.sin(angle) * r;
+      if (!acceptsGrass(x, z)) continue;
+      leafLitter.push({
+        x,
+        z,
+        sx: 0.18 + rng() * 0.32,
+        sz: 0.08 + rng() * 0.18,
+        rot: rng() * Math.PI,
+      });
     }
     for (let i = 0; i < 40; i++) {
       const x = (rng() * 2 - 1) * half * 0.92;
@@ -185,12 +229,18 @@ export function Decorations() {
       if (groundKind(x, z) !== 'rock') continue;
       cliffPlants.push({ x, z, s: 0.4 + rng() * 0.4, rot: rng() * Math.PI * 2 });
     }
-    return { rocks, flowers, grasses, groundGrassA, groundGrassB, beachRocks, cliffPlants };
+    return { rocks, flowers, grasses, groundGrassA, groundGrassB, beachRocks, cliffPlants, bushes, leafLitter };
   }, []);
 
   const dummy = useMemo(() => new THREE.Object3D(), []);
   const flowerChunks = useMemo(() => chunkByGrid(flowers, DETAIL_CHUNK_SIZE), [flowers]);
-  const grassChunks = useMemo(() => chunkByGrid(grasses, DETAIL_CHUNK_SIZE), [grasses]);
+  const grassChunks = useMemo(
+    () => ([0, 1, 2] as const).flatMap((variant) =>
+      chunkByGrid(grasses.filter((grass) => grass.variant === variant), DETAIL_CHUNK_SIZE)
+        .map((chunk) => ({ ...chunk, id: `${variant}:${chunk.id}`, variant })),
+    ),
+    [grasses],
+  );
   const lowGrassAChunks = useMemo(() => chunkByGrid(groundGrassA, DETAIL_CHUNK_SIZE), [groundGrassA]);
   const lowGrassBChunks = useMemo(() => chunkByGrid(groundGrassB, DETAIL_CHUNK_SIZE), [groundGrassB]);
 
@@ -234,6 +284,21 @@ export function Decorations() {
     cliffPlantRef.current.instanceMatrix.needsUpdate = true;
   }, [cliffPlants, dummy]);
 
+  useLayoutEffect(() => {
+    if (!leafLitterRef.current) return;
+    leafLitter.forEach((leaf, index) => {
+      const y = groundHeight(leaf.x, leaf.z);
+      dummy.position.set(leaf.x, y + 0.028, leaf.z);
+      dummy.rotation.set(-Math.PI / 2, 0, leaf.rot);
+      dummy.scale.set(leaf.sx, leaf.sz, 1);
+      dummy.updateMatrix();
+      leafLitterRef.current!.setMatrixAt(index, dummy.matrix);
+      leafLitterRef.current!.setColorAt(index, new THREE.Color(index % 3 === 0 ? '#8b6840' : index % 3 === 1 ? '#9b7545' : '#6f5938'));
+    });
+    leafLitterRef.current.instanceMatrix.needsUpdate = true;
+    if (leafLitterRef.current.instanceColor) leafLitterRef.current.instanceColor.needsUpdate = true;
+  }, [dummy, leafLitter]);
+
   return (
     <group>
       <instancedMesh ref={rockRef} args={[undefined, undefined, rocks.length]} castShadow receiveShadow>
@@ -245,7 +310,7 @@ export function Decorations() {
         <FlowerChunk key={chunk.id} chunk={chunk} />
       ))}
       {grassChunks.map((chunk) => (
-        <GrassChunk key={chunk.id} chunk={chunk} />
+        <GrassChunk key={chunk.id} chunk={chunk} variant={chunk.variant} />
       ))}
       {lowGrassAChunks.map((chunk) => (
         <LowGrassChunk key={chunk.id} chunk={chunk} color={LOW_GRASS_A} variant="a" />
@@ -263,6 +328,22 @@ export function Decorations() {
         <coneGeometry args={[0.25, 0.4, 5]} />
         <meshStandardMaterial color={CLIFF_PLANT_COLOR} flatShading roughness={1} />
       </instancedMesh>
+
+      <instancedMesh ref={leafLitterRef} args={[undefined, undefined, leafLitter.length]} receiveShadow>
+        <circleGeometry args={[0.5, 7]} />
+        <meshStandardMaterial vertexColors roughness={1} polygonOffset polygonOffsetFactor={-1} />
+      </instancedMesh>
+
+      {bushes.map((bush, index) => (
+        <group
+          key={`forest-bush-${index}`}
+          position={[bush.x, groundHeight(bush.x, bush.z), bush.z]}
+          rotation={[0, bush.rot, 0]}
+          scale={[bush.s, bush.s * 0.72, bush.s]}
+        >
+          <KenneyBush variant={bush.variant} size={1.05} />
+        </group>
+      ))}
     </group>
   );
 }
@@ -345,12 +426,40 @@ function FlowerChunk({ chunk }: { chunk: Chunk<FlowerInstance> }) {
   );
 }
 
-function GrassChunk({ chunk }: { chunk: Chunk<GrassInstance> }) {
+const GRASS_MODEL_PATHS = [
+  'assets/models/kenney/plants/grass.glb',
+  'assets/models/kenney/plants/grass_large.glb',
+  'assets/models/kenney/plants/grass_leafs.glb',
+] as const;
+GRASS_MODEL_PATHS.forEach((path) => useGLTF.preload(path));
+
+function GrassChunk({ chunk, variant }: { chunk: Chunk<GrassInstance>; variant: 0 | 1 | 2 }) {
   const groupRef = useRef<THREE.Group>(null);
   const meshRef = useRef<THREE.InstancedMesh>(null);
   const dummy = useMemo(() => new THREE.Object3D(), []);
   const checkRef = useRef(0);
   const { playerRef } = useGameRefs();
+  const { scene } = useGLTF(GRASS_MODEL_PATHS[variant]);
+  const source = useMemo(() => {
+    let mesh: THREE.Mesh | null = null;
+    scene.traverse((child) => {
+      if (!mesh && child instanceof THREE.Mesh) mesh = child;
+    });
+    if (!mesh) return null;
+    const found = mesh as THREE.Mesh;
+    scene.updateMatrixWorld(true);
+    const geometry = found.geometry.clone();
+    geometry.applyMatrix4(found.matrixWorld);
+    geometry.computeBoundingBox();
+    const box = geometry.boundingBox;
+    if (box) {
+      const targetHeight = variant === 0 ? 0.48 : variant === 1 ? 0.72 : 0.58;
+      const height = Math.max(0.001, box.max.y - box.min.y);
+      geometry.translate(0, -box.min.y, 0);
+      geometry.scale(targetHeight / height, targetHeight / height, targetHeight / height);
+    }
+    return geometry;
+  }, [scene, variant]);
 
   useLayoutEffect(() => {
     const mesh = meshRef.current;
@@ -358,7 +467,7 @@ function GrassChunk({ chunk }: { chunk: Chunk<GrassInstance> }) {
     mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
     chunk.items.forEach((g, i) => {
       const y = groundHeight(g.x, g.z);
-      dummy.position.set(g.x, y + g.s * 0.3, g.z);
+      dummy.position.set(g.x, y, g.z);
       dummy.rotation.set(0, g.rot, 0);
       dummy.scale.set(g.s, g.s, g.s);
       dummy.updateMatrix();
@@ -386,7 +495,7 @@ function GrassChunk({ chunk }: { chunk: Chunk<GrassInstance> }) {
       const sway = Math.sin(phase) * 0.16 + Math.sin(phase * 1.6) * 0.05;
       const bendX = Math.cos(g.rot) * sway;
       const bendZ = Math.sin(g.rot) * sway;
-      dummy.position.set(g.x + bendZ * 0.08, y + g.s * 0.3, g.z - bendX * 0.08);
+      dummy.position.set(g.x + bendZ * 0.05, y, g.z - bendX * 0.05);
       dummy.rotation.set(bendX * 0.45, g.rot, bendZ * 0.45);
       dummy.scale.set(g.s, g.s, g.s);
       dummy.updateMatrix();
@@ -397,10 +506,21 @@ function GrassChunk({ chunk }: { chunk: Chunk<GrassInstance> }) {
 
   return (
     <group ref={groupRef}>
-      <instancedMesh ref={meshRef} args={[undefined, undefined, chunk.items.length]} castShadow>
-        <coneGeometry args={[0.18, 0.7, 5]} />
-        <meshStandardMaterial color="#6b9a4a" flatShading roughness={1} />
-      </instancedMesh>
+      {source && (
+        <instancedMesh
+          ref={meshRef}
+          args={[source, undefined, chunk.items.length]}
+          castShadow={variant !== 0}
+          receiveShadow
+        >
+          <meshStandardMaterial
+            color={variant === 0 ? '#6f9e45' : variant === 1 ? '#668d42' : '#4f793c'}
+            flatShading
+            roughness={1}
+            metalness={0}
+          />
+        </instancedMesh>
+      )}
     </group>
   );
 }
