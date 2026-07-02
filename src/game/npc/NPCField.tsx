@@ -11,6 +11,7 @@ import { useOcclusionOpacity } from '../controllers/useOcclusionOpacity.ts';
 import { useGameTimeRef } from '../useGameTimeRef.ts';
 import { KenneyNPC, type NpcActivity } from '../world/KenneyCharacters.tsx';
 import { BuildingYard, Chimney, LowPolyBuilding, Planters, PorchColumns } from '../world/BuildingKit.tsx';
+import { KenneyFlower, KenneyLog } from '../world/KenneyModels.tsx';
 
 const NPC_CHARACTER_MAP: Record<string, number> = { mira: 1, tao: 2, lina: 3 };
 const NPC_YARD_VARIANT: Record<string, number> = { mira: 0, tao: 1, lina: 2 };
@@ -90,11 +91,81 @@ function NPCHouse({ npc }: { npc: NpcDef }) {
           variantOffset={NPC_YARD_VARIANT[npc.id] ?? 0}
           logs={npc.id === 'lina'}
         />
+        <CareerYard npcId={npc.id} />
         <mesh position={[0.68, 1.95, 2.02]}>
           <sphereGeometry args={[0.085, 8, 6]} />
           <meshBasicMaterial color="#ffe0a0" />
         </mesh>
       </LowPolyBuilding>
+    </group>
+  );
+}
+
+function CareerYard({ npcId }: { npcId: NpcDef['id'] }) {
+  if (npcId === 'mira') {
+    return (
+      <group position={[-3.25, 0, -0.2]}>
+        {[-0.55, 0, 0.55].map((z, row) => (
+          <group key={z} position={[0, 0, z]}>
+            <mesh position={[0, 0.07, 0]} receiveShadow>
+              <boxGeometry args={[1.65, 0.14, 0.38]} />
+              <meshStandardMaterial color="#73523a" flatShading roughness={1} />
+            </mesh>
+            {[-0.55, 0, 0.55].map((x, column) => (
+              <group key={x} position={[x, 0.15, 0]} scale={0.55 + ((row + column) % 2) * 0.1}>
+                <KenneyFlower variant={row + column} />
+              </group>
+            ))}
+          </group>
+        ))}
+      </group>
+    );
+  }
+  if (npcId === 'tao') {
+    return (
+      <group position={[3.1, 0, -0.35]}>
+        {[-0.65, 0.65].map((x) => (
+          <mesh key={x} position={[x, 0.72, 0]} castShadow>
+            <cylinderGeometry args={[0.055, 0.07, 1.45, 7]} />
+            <meshStandardMaterial color="#65452d" flatShading roughness={1} />
+          </mesh>
+        ))}
+        <mesh position={[0, 1.3, 0]} castShadow>
+          <boxGeometry args={[1.5, 0.1, 0.12]} />
+          <meshStandardMaterial color="#765334" flatShading roughness={1} />
+        </mesh>
+        {[-0.42, 0, 0.42].map((x, index) => (
+          <mesh key={x} position={[x, 0.72, 0.08]} rotation={[0, 0, -0.12 + index * 0.12]} castShadow>
+            <cylinderGeometry args={[0.018, 0.026, 1.05, 6]} />
+            <meshStandardMaterial color={index === 1 ? '#50788d' : '#6a4a2b'} flatShading roughness={0.9} />
+          </mesh>
+        ))}
+        <mesh position={[0.9, 0.22, 0.15]} castShadow>
+          <cylinderGeometry args={[0.24, 0.18, 0.4, 10]} />
+          <meshStandardMaterial color="#7d9aaa" flatShading roughness={0.82} />
+        </mesh>
+      </group>
+    );
+  }
+  return (
+    <group position={[-3.2, 0, -0.35]}>
+      <mesh position={[0, 0.55, 0]} castShadow receiveShadow>
+        <boxGeometry args={[1.8, 0.16, 0.72]} />
+        <meshStandardMaterial color="#8a5c34" flatShading roughness={1} />
+      </mesh>
+      {[-0.7, 0.7].map((x) => (
+        <mesh key={x} position={[x, 0.27, 0]} castShadow>
+          <boxGeometry args={[0.14, 0.55, 0.55]} />
+          <meshStandardMaterial color="#674329" flatShading roughness={1} />
+        </mesh>
+      ))}
+      <group position={[1.3, 0, 0.15]} rotation={[0, 0.4, 0]}>
+        <KenneyLog stack />
+      </group>
+      <mesh position={[-0.2, 0.74, 0]} rotation={[0, 0, -0.35]} castShadow>
+        <boxGeometry args={[0.7, 0.08, 0.18]} />
+        <meshStandardMaterial color="#74797d" flatShading roughness={0.65} metalness={0.18} />
+      </mesh>
     </group>
   );
 }

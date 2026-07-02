@@ -11,47 +11,9 @@ export interface StaticObstacle {
   radius: number;
 }
 
-function bridgeLampObstacles(): StaticObstacle[] {
-  return MAP_LAYOUT.bridges.flatMap((bridge) => {
-    const [length, , width] = bridge.size;
-    const tx = Math.cos(bridge.rotation);
-    const tz = -Math.sin(bridge.rotation);
-    const nx = Math.sin(bridge.rotation);
-    const nz = Math.cos(bridge.rotation);
-    return [-1, 1].map((end) => {
-      const side = end > 0 ? 1 : -1;
-      return {
-        id: `${bridge.id}-lamp-${end}`,
-        label: '桥头路灯',
-        pos: [
-          bridge.pos[0] + tx * end * (length / 2 + 1.7) + nx * side * (width / 2 + 2.2),
-          0,
-          bridge.pos[2] + tz * end * (length / 2 + 1.7) + nz * side * (width / 2 + 2.2),
-        ] as Vec3,
-        radius: 0.36,
-      };
-    });
-  });
-}
-
-function npcLampObstacles(): StaticObstacle[] {
-  return MAP_LAYOUT.npcs.map((npc) => ({
-    id: `${npc.id}-home-lamp`,
-    label: '居民门口路灯',
-    pos: [npc.homePos[0] - 2.8, 0, npc.homePos[2] + 3.0] as Vec3,
-    radius: 0.36,
-  }));
-}
-
 export function getStaticObstacles(): StaticObstacle[] {
   const camp = LANDMARKS.camp;
   return [
-    ...bridgeLampObstacles(),
-    ...npcLampObstacles(),
-    { id: 'plaza-lamp-a', label: '广场路灯', pos: [MAP_LAYOUT.plaza.pos[0] - 4, 0, MAP_LAYOUT.plaza.pos[2] + 3], radius: 0.36 },
-    { id: 'plaza-lamp-b', label: '广场路灯', pos: [MAP_LAYOUT.plaza.pos[0] + 4, 0, MAP_LAYOUT.plaza.pos[2] - 2], radius: 0.36 },
-    { id: 'shop-lamp', label: '商店路灯', pos: [MAP_LAYOUT.shop.pos[0] - 3.5, 0, MAP_LAYOUT.shop.pos[2] + 3.8], radius: 0.36 },
-    { id: 'museum-lamp', label: '博物馆路灯', pos: [MAP_LAYOUT.museum.pos[0] - 4.2, 0, MAP_LAYOUT.museum.pos[2] + 4.2], radius: 0.36 },
     { id: 'plaza-sign', label: '广场告示牌', pos: [MAP_LAYOUT.plaza.pos[0] + 2, 0, MAP_LAYOUT.plaza.pos[2] + 1], radius: 0.42 },
     { id: 'waterfall-sign', label: '瀑布告示牌', pos: [MAP_LAYOUT.waterfall.pool[0] + 4, 0, MAP_LAYOUT.waterfall.pool[2] - 2], radius: 0.42 },
     ...camp.tents.map((tent) => ({ id: tent.id, label: '帐篷', pos: [tent.x, 0, tent.z] as Vec3, radius: 1.55 })),

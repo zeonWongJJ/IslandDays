@@ -11,10 +11,10 @@ function useLampPositions(): LampPos[] {
     const lamps: LampPos[] = [];
     // 关键建筑：真灯光
     for (const npc of NPCS) {
-      lamps.push({ x: npc.homePos[0], z: npc.homePos[2], hasLight: true });
+      lamps.push({ x: npc.homePos[0] + 3.4, z: npc.homePos[2] + 2.2, hasLight: true });
     }
-    lamps.push({ x: MAP_LAYOUT.shop.pos[0], z: MAP_LAYOUT.shop.pos[2], hasLight: true });
-    lamps.push({ x: MAP_LAYOUT.home.pos[0], z: MAP_LAYOUT.home.pos[2], hasLight: true });
+    lamps.push({ x: MAP_LAYOUT.shop.pos[0] + 3.8, z: MAP_LAYOUT.shop.pos[2] + 2.8, hasLight: true });
+    lamps.push({ x: MAP_LAYOUT.home.pos[0] + 4.1, z: MAP_LAYOUT.home.pos[2] + 3.1, hasLight: true });
 
     // 广场周围：4 盏真灯光 + 4 盏装饰灯（交替）
     const plaza = MAP_LAYOUT.plaza;

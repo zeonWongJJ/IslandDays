@@ -164,6 +164,30 @@ export function LowPolyBuilding({
         <meshStandardMaterial color={roofColor} flatShading roughness={1} />
       </mesh>
 
+      {[-1, 1].map((side) => (
+        <group key={`gutter-${side}`}>
+          <mesh
+            position={[0, wallHeight + 0.08, side * (depth / 2 + 0.43)]}
+            rotation={[0, 0, Math.PI / 2]}
+            castShadow
+          >
+            <cylinderGeometry args={[0.055, 0.055, width + 0.65, 8]} />
+            <meshStandardMaterial color="#6d6256" flatShading roughness={0.85} metalness={0.08} />
+          </mesh>
+          <mesh position={[sideX + 0.28, wallHeight * 0.47, side * (depth / 2 + 0.43)]} castShadow>
+            <cylinderGeometry args={[0.045, 0.045, wallHeight * 0.92, 7]} />
+            <meshStandardMaterial color="#6d6256" flatShading roughness={0.85} metalness={0.08} />
+          </mesh>
+        </group>
+      ))}
+
+      {!awningColor && (
+        <mesh position={[0, doorHeight + 0.32, frontZ + 0.3]} rotation={[0.12, 0, 0]} castShadow>
+          <boxGeometry args={[doorWidth + 0.75, 0.12, 0.62]} />
+          <meshStandardMaterial color={roofColor} flatShading roughness={1} />
+        </mesh>
+      )}
+
       <Door width={doorWidth} height={doorHeight} z={frontZ + 0.05} color={doorColor} trimColor={trimColor} />
       {windows.map((window, index) => <Window key={index} {...window} trimColor={trimColor} />)}
 
