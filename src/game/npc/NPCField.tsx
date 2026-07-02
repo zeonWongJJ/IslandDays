@@ -59,7 +59,7 @@ export function NPCField() {
 function NPCHouse({ npc }: { npc: NpcDef }) {
   const [x, , z] = npc.homePos;
   const y = useMemo(() => groundHeight(x, z), [x, z]);
-  const roofOpacity = useOcclusionOpacity(x, z, 3.6, 0.16);
+  const roofOpacity = useOcclusionOpacity(x, z, 3.6, 0.01);
 
   return (
     <group position={[x, y, z]}>
@@ -220,9 +220,7 @@ function NPC({ npc, obstacles }: { npc: NpcDef; obstacles: StaticObstacle[] }) {
     const step = Math.min(movementDistance, delta * 1.35);
     if (movementDistance > 0.001) {
       movement.multiplyScalar(step / movementDistance);
-      const candidateX = current.x + movement.x;
-      const candidateZ = current.y + movement.y;
-      if (!blocksWalking(candidateX, candidateZ)) current.set(candidateX, candidateZ);
+      current.copy(resolveNpcStep(current, movement, npcObstacles));
     }
 
     const stuck = stuckRef.current;
@@ -354,10 +352,54 @@ function chooseNpcWaypoint(
     if (perpendicularDistance >= clearance) continue;
     if (!nearest || along < nearest.along) nearest = { obstacle, along, clearance };
   }
-  if (!nearest) return target;
+  if (!nearest) return safeNpcPoint(target, current, obstacles);
   const perpendicular = new THREE.Vector2(-direction.y * side, direction.x * side);
-  return new THREE.Vector2(nearest.obstacle.pos[0], nearest.obstacle.pos[2])
+  const preferred = new THREE.Vector2(nearest.obstacle.pos[0], nearest.obstacle.pos[2])
     .addScaledVector(perpendicular, nearest.clearance);
+  if (npcPointIsClear(preferred, obstacles)) return preferred;
+  const alternate = new THREE.Vector2(nearest.obstacle.pos[0], nearest.obstacle.pos[2])
+    .addScaledVector(perpendicular, -nearest.clearance);
+  return safeNpcPoint(alternate, current, obstacles);
+}
+
+function resolveNpcStep(
+  current: THREE.Vector2,
+  movement: THREE.Vector2,
+  obstacles: StaticObstacle[],
+): THREE.Vector2 {
+  const candidates = [
+    current.clone().add(movement),
+    new THREE.Vector2(current.x + movement.x, current.y),
+    new THREE.Vector2(current.x, current.y + movement.y),
+  ];
+  return candidates.find((candidate) => npcPointIsClear(candidate, obstacles)) ?? current;
+}
+
+function safeNpcPoint(
+  preferred: THREE.Vector2,
+  fallback: THREE.Vector2,
+  obstacles: StaticObstacle[],
+): THREE.Vector2 {
+  if (npcPointIsClear(preferred, obstacles)) return preferred;
+  for (let radius = 0.8; radius <= 4; radius += 0.8) {
+    for (let index = 0; index < 12; index++) {
+      const angle = index / 12 * Math.PI * 2;
+      const candidate = new THREE.Vector2(
+        preferred.x + Math.cos(angle) * radius,
+        preferred.y + Math.sin(angle) * radius,
+      );
+      if (npcPointIsClear(candidate, obstacles)) return candidate;
+    }
+  }
+  return fallback;
+}
+
+function npcPointIsClear(point: THREE.Vector2, obstacles: StaticObstacle[]): boolean {
+  if (blocksWalking(point.x, point.y)) return false;
+  return obstacles.every((obstacle) =>
+    Math.hypot(point.x - obstacle.pos[0], point.y - obstacle.pos[2])
+      >= obstacle.radius + NPC_BODY_RADIUS,
+  );
 }
 
 function lerpAngle(current: number, target: number, amount: number): number {

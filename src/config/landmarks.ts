@@ -35,9 +35,9 @@ export const LANDMARKS = {
       { id: 'camp-tent-b', x: campX + 2.4, z: campZ + 2.3, rot: 0.55 },
     ] satisfies LandmarkPoint[],
     fire: { id: 'camp-fire', x: campX + 0.5, z: campZ - 1.4 },
-    logStack: { id: 'camp-log-stack', x: campX - 3.8, z: campZ + 0.6, rot: 0.9 },
+    logStack: { id: 'camp-log-stack', x: campX + 5.2, z: campZ + 0.6, rot: 0.9 },
     fences: [
-      { id: 'camp-fence-a', x: campX - 4, z: campZ - 3, rot: Math.PI / 2 },
+      { id: 'camp-fence-a', x: campX + 5, z: campZ - 3, rot: Math.PI / 2 },
       { id: 'camp-fence-b', x: campX - 2, z: campZ - 3, rot: Math.PI / 2 },
       { id: 'camp-fence-c', x: campX + 3.5, z: campZ - 1, rot: 0.1 },
       { id: 'camp-fence-d', x: campX + 3.8, z: campZ + 1.2, rot: 0.1 },
@@ -60,8 +60,8 @@ export const LANDMARKS = {
     logs: [
       { id: 'forest-log-a', x: -23, z: 11, rot: 0.7 },
       { id: 'forest-log-b', x: -26, z: 13, rot: 0.9 },
-      { id: 'forest-log-c', x: -29, z: 16, rot: 0.6 },
-      { id: 'forest-log-d', x: -34, z: 21, rot: 0.3 },
+      { id: 'forest-log-c', x: -27, z: 19, rot: 0.6 },
+      { id: 'forest-log-d', x: -36, z: 18.5, rot: 0.3 },
     ] satisfies LandmarkPoint[],
     bushes: [-37, -41, -45].map((x, index) => ({
       id: `forest-bush-${index}`,
@@ -75,11 +75,11 @@ export const LANDMARKS = {
     beds: [
       { id: 'garden-bed-a', x: 53.5, z: -12.5, rot: -0.2 },
       { id: 'garden-bed-b', x: 57.2, z: -11.7, rot: -0.2 },
-      { id: 'garden-bed-c', x: 54.3, z: -8.2, rot: -0.2 },
+      { id: 'garden-bed-c', x: 56.2, z: -4.8, rot: -0.2 },
       { id: 'garden-bed-d', x: 58, z: -7.4, rot: -0.2 },
     ] satisfies LandmarkPoint[],
     picnic: { id: 'garden-picnic', x: 62, z: -12.5, rot: 0.45 },
-    scarecrow: { id: 'garden-scarecrow', x: 50.5, z: -7.5, rot: -0.3 },
+    scarecrow: { id: 'garden-scarecrow', x: 50.2, z: -12.2, rot: -0.3 },
     fences: [
       { id: 'garden-fence-a', x: 51, z: -15, rot: Math.PI / 2 - 0.2 },
       { id: 'garden-fence-b', x: 54, z: -15.7, rot: Math.PI / 2 - 0.2 },
@@ -124,7 +124,7 @@ export const LANDMARKS = {
     center: { id: 'forest-ruins-center', x: -51, z: 31 },
     pillars: [
       { id: 'ruin-pillar-a', x: -55, z: 28.5, rot: -0.15 },
-      { id: 'ruin-pillar-b', x: -47.5, z: 27.8, rot: 0.12 },
+      { id: 'ruin-pillar-b', x: -48.5, z: 25.2, rot: 0.12 },
       { id: 'ruin-pillar-c', x: -56, z: 34.2, rot: 0.08 },
       { id: 'ruin-pillar-d', x: -46.5, z: 34.5, rot: -0.1 },
     ] satisfies LandmarkPoint[],
@@ -136,7 +136,7 @@ export const LANDMARKS = {
     ] satisfies LandmarkPoint[],
     shrubs: [
       { id: 'ruin-shrub-a', x: -58.5, z: 27.2, rot: 0.3 },
-      { id: 'ruin-shrub-b', x: -44, z: 27.4, rot: 1.5 },
+      { id: 'ruin-shrub-b', x: -43, z: 24.8, rot: 1.5 },
       { id: 'ruin-shrub-c', x: -58.2, z: 36.5, rot: 2.3 },
       { id: 'ruin-shrub-d', x: -43.8, z: 36.2, rot: 0.9 },
     ] satisfies LandmarkPoint[],

@@ -39,6 +39,25 @@ function distanceToPoint(x: number, z: number, point: [number, number]): number 
   return Math.hypot(x - point[0], z - point[1]);
 }
 
+function waterfallBedTarget(x: number, z: number): number | null {
+  const source: [number, number] = [-42, 38];
+  const lip: [number, number] = [MAP_LAYOUT.waterfall.dropPos[0], MAP_LAYOUT.waterfall.dropPos[2]];
+  const pool: [number, number] = [MAP_LAYOUT.waterfall.pool[0], MAP_LAYOUT.waterfall.pool[2]];
+  const distance = Math.min(
+    distanceToSegment(x, z, source, lip),
+    distanceToSegment(x, z, lip, pool),
+    distanceToPoint(x, z, pool),
+  );
+  if (distance > 5.8) return null;
+
+  const vx = pool[0] - lip[0];
+  const vz = pool[1] - lip[1];
+  const lengthSq = vx * vx + vz * vz || 1;
+  const progress = ((x - lip[0]) * vx + (z - lip[1]) * vz) / lengthSq;
+  const descent = smoothstep(0.01, 0.24, progress);
+  return 3.35 + (-1.15 - 3.35) * descent;
+}
+
 function mountainBoost(x: number, z: number): number {
   const center = MAP_LAYOUT.zones.mountain.center;
   const dx = x - center[0];
@@ -119,7 +138,12 @@ export function groundHeight(x: number, z: number): number {
   h += mountainBoost(x, z) + terraceBoost(x, z);
 
   const river = riverAmount(x, z);
-  if (river > 0) h = h * (1 - river * 0.7) + (-1.8) * river * 0.7;
+  if (river > 0) {
+    const waterfallTarget = waterfallBedTarget(x, z);
+    const bedHeight = waterfallTarget ?? -1.8;
+    const carveStrength = waterfallTarget === null ? 0.7 : 0.92;
+    h = h * (1 - river * carveStrength) + bedHeight * river * carveStrength;
+  }
 
   const pad = landPadAmount(x, z);
   if (pad.amount > 0) h = h * (1 - pad.amount) + pad.height * pad.amount;
@@ -149,7 +173,11 @@ function groundHeightBaseWater(x: number, z: number): number {
   }
   h += mountainBoost(x, z) + terraceBoost(x, z);
   const river = riverAmount(x, z);
-  return river > 0 ? h * (1 - river * 0.7) + (-1.8) * river * 0.7 : h;
+  if (river <= 0) return h;
+  const waterfallTarget = waterfallBedTarget(x, z);
+  const bedHeight = waterfallTarget ?? -1.8;
+  const carveStrength = waterfallTarget === null ? 0.7 : 0.92;
+  return h * (1 - river * carveStrength) + bedHeight * river * carveStrength;
 }
 
 export function riverAmount(x: number, z: number): number {
@@ -268,6 +296,31 @@ export function nearestWalkable(x: number, z: number): [number, number, number] 
   return [0, walkingHeight(0, 16), 16];
 }
 
+export function resolveWalkableStep(
+  fromX: number,
+  fromZ: number,
+  toX: number,
+  toZ: number,
+): [number, number] {
+  if (!blocksWalking(toX, toZ)) return [toX, toZ];
+  if (!blocksWalking(toX, fromZ)) return [toX, fromZ];
+  if (!blocksWalking(fromX, toZ)) return [fromX, toZ];
+
+  let low = 0;
+  let high = 1;
+  for (let i = 0; i < 6; i++) {
+    const mid = (low + high) * 0.5;
+    const x = fromX + (toX - fromX) * mid;
+    const z = fromZ + (toZ - fromZ) * mid;
+    if (blocksWalking(x, z)) high = mid;
+    else low = mid;
+  }
+  return [
+    fromX + (toX - fromX) * low,
+    fromZ + (toZ - fromZ) * low,
+  ];
+}
+
 export type GroundKind = 'grass' | 'sand' | 'rock' | 'dirt' | 'water' | 'road' | 'foundation' | 'paving';
 
 export function groundKind(x: number, z: number): GroundKind {
@@ -275,10 +328,13 @@ export function groundKind(x: number, z: number): GroundKind {
   const dist = Math.hypot(x, z) / half;
   const h = groundHeight(x, z);
   const pad = landPadAmount(x, z);
+  const river = riverAmount(x, z);
+  const riverSlope = river > 0.25 ? localSlope(x, z) : 0;
 
   if (plazaPavingAmount(x, z) > 0.42) return 'paving';
   if (pad.amount > 0.5) return pad.buildable ? 'foundation' : 'road';
-  if (h < WATER_LEVEL + 0.28 || riverAmount(x, z) > 0.45) return 'water';
+  if (h < WATER_LEVEL + 0.28 || (river > 0.45 && riverSlope < 0.82)) return 'water';
+  if (river > 0.45 && riverSlope >= 0.82) return 'rock';
   if (roadAmount(x, z) > 0.45) return 'road';
 
   const boost = mountainBoost(x, z);

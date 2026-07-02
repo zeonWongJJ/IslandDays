@@ -62,6 +62,7 @@ export function Water() {
           envMapIntensity={0.6}
           clearcoat={0.3}
           clearcoatRoughness={0.4}
+          depthWrite={false}
           side={THREE.DoubleSide}
         />
       </mesh>

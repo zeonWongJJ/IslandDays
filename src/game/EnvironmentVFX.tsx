@@ -216,35 +216,35 @@ function MistBillboards({ patches, speed = 1 }: { patches: MistBillboardPatch[];
 function RiverMist() {
   const patches = useMemo<MistPatch[]>(() => {
     const riverX = -16;
-    return Array.from({ length: 34 }, (_, i) => {
-      const t = i / 33;
+    return Array.from({ length: 20 }, (_, i) => {
+      const t = i / 19;
       const z = -92 + t * 184;
       const x = riverX + Math.sin(t * Math.PI * 4) * 7 + Math.sin(i * 1.9) * 2;
       return {
         x,
         z,
         y: 0.26 + (i % 3) * 0.08,
-        sx: 11 + Math.abs(Math.sin(i * 2.1)) * 13,
-        sz: 4.5 + Math.abs(Math.cos(i * 1.7)) * 6.5,
+        sx: 8 + Math.abs(Math.sin(i * 2.1)) * 8,
+        sz: 3.5 + Math.abs(Math.cos(i * 1.7)) * 4.5,
         phase: i * 0.73,
-        opacity: 0.19,
+        opacity: 0.1,
         color: '#e6efe7',
       };
     });
   }, []);
   const billboards = useMemo<MistBillboardPatch[]>(() => {
-    return Array.from({ length: 20 }, (_, i) => {
-      const t = i / 19;
+    return Array.from({ length: 10 }, (_, i) => {
+      const t = i / 9;
       const z = -86 + t * 172;
       const x = -16 + Math.sin(t * Math.PI * 4) * 7 + Math.sin(i * 2.4) * 1.7;
       return {
         x,
         z,
         y: 1.35 + (i % 4) * 0.22,
-        width: 13 + Math.abs(Math.sin(i * 1.7)) * 11,
-        height: 2.8 + Math.abs(Math.cos(i * 1.3)) * 2.3,
+        width: 10 + Math.abs(Math.sin(i * 1.7)) * 7,
+        height: 2.2 + Math.abs(Math.cos(i * 1.3)) * 1.6,
         phase: i * 0.81,
-        opacity: 0.2,
+        opacity: 0.08,
         color: '#eaf3ee',
       };
     });
@@ -306,35 +306,35 @@ function ForestMist() {
 function WaterfallMist() {
   const patches = useMemo<MistPatch[]>(() => {
     const pool = MAP_LAYOUT.waterfall.pool;
-    return Array.from({ length: 10 }, (_, i) => {
-      const a = (i / 10) * Math.PI * 2;
-      const r = 1.5 + (i % 4) * 1.2;
+    return Array.from({ length: 6 }, (_, i) => {
+      const a = (i / 6) * Math.PI * 2;
+      const r = 1.2 + (i % 3) * 0.9;
       return {
         x: pool[0] + Math.cos(a) * r,
         z: pool[2] + Math.sin(a) * r,
-        y: 0.52 + (i % 3) * 0.18,
-        sx: 4.8 + (i % 3) * 2.2,
-        sz: 2.8 + (i % 4) * 1.4,
+        y: 0.38 + (i % 2) * 0.12,
+        sx: 2.8 + (i % 3) * 1.1,
+        sz: 1.7 + (i % 2) * 0.8,
         phase: i * 1.17,
-        opacity: 0.24,
+        opacity: 0.1,
         color: '#eef8f8',
       };
     });
   }, []);
   const billboards = useMemo<MistBillboardPatch[]>(() => {
     const pool = MAP_LAYOUT.waterfall.pool;
-    return Array.from({ length: 14 }, (_, i) => {
-      const a = (i / 14) * Math.PI * 2;
-      const r = 0.8 + (i % 5) * 0.9;
-      const height = 2.8 + (i % 4) * 0.75;
+    return Array.from({ length: 4 }, (_, i) => {
+      const a = (i / 4) * Math.PI * 2;
+      const r = 0.8 + (i % 2) * 0.7;
+      const height = 1.2 + (i % 2) * 0.45;
       return {
         x: pool[0] + Math.cos(a) * r,
         z: pool[2] + Math.sin(a) * r,
-        y: 0.8 + height * 0.35 + (i % 3) * 0.16,
-        width: 4.5 + (i % 4) * 1.8,
+        y: 0.55 + height * 0.3,
+        width: 2.4 + (i % 2) * 1.1,
         height,
         phase: i * 1.21,
-        opacity: 0.3,
+        opacity: 0.08,
         color: '#f2fbff',
       };
     });

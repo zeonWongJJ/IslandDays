@@ -1,7 +1,8 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ITEMS } from '../src/config/items.ts';
+import { MAP_LAYOUT } from '../src/config/mapLayout.ts';
 import { findInteractionTarget } from '../src/game/interactions.ts';
-import { groundKind } from '../src/systems/terrain.ts';
+import { blocksWalking, groundHeight, groundKind, resolveWalkableStep } from '../src/systems/terrain.ts';
 import { buildSpatialGrid, querySpatialGrid } from '../src/systems/spatialGrid.ts';
 import type { TreeData } from '../src/systems/save.ts';
 
@@ -133,5 +134,52 @@ describe('空间网格', () => {
     const grid = buildSpatialGrid(items, (item) => item.pos, 12);
 
     expect(querySpatialGrid(grid, 12, 0, 2).map((item) => item.id).sort()).toEqual(['left', 'right']);
+  });
+});
+
+describe('行走通行', () => {
+  it('斜向碰到水岸时会沿可走方向滑动', () => {
+    let sample: [number, number] | null = null;
+    for (let x = -90; x <= 90 && !sample; x += 1) {
+      for (let z = -90; z <= 90; z += 1) {
+        if (!blocksWalking(x, z) && blocksWalking(x + 1, z + 1) && !blocksWalking(x, z + 1)) {
+          sample = [x, z];
+          break;
+        }
+      }
+    }
+    expect(sample).not.toBeNull();
+    const [x, z] = sample!;
+    const resolved = resolveWalkableStep(x, z, x + 1, z + 1);
+    expect(resolved).not.toEqual([x, z]);
+    expect(blocksWalking(resolved[0], resolved[1])).toBe(false);
+  });
+
+  it('两座桥的中心通道从两端到桥面均可通行', () => {
+    for (const bridge of MAP_LAYOUT.bridges) {
+      const halfLength = bridge.size[0] / 2;
+      for (let offset = -halfLength - 4; offset <= halfLength + 4; offset += 0.5) {
+        expect(blocksWalking(bridge.pos[0] + offset, bridge.pos[2])).toBe(false);
+      }
+    }
+  });
+});
+
+describe('瀑布地形', () => {
+  it('崖口与水潭具备足够的真实落差', () => {
+    const lip = MAP_LAYOUT.waterfall.dropPos;
+    const pool = MAP_LAYOUT.waterfall.pool;
+    expect(groundHeight(lip[0], lip[2]) - groundHeight(pool[0], pool[2])).toBeGreaterThan(2);
+  });
+
+  it('高位溪流高于下游水潭', () => {
+    const top = MAP_LAYOUT.waterfall.top;
+    const pool = MAP_LAYOUT.waterfall.pool;
+    expect(groundHeight(top[0], top[2])).toBeGreaterThan(groundHeight(pool[0], pool[2]) + 2);
+  });
+
+  it('水潭不会被道路地形覆盖', () => {
+    const pool = MAP_LAYOUT.waterfall.pool;
+    expect(groundKind(pool[0], pool[2])).toBe('water');
   });
 });

@@ -1,11 +1,12 @@
-import { useLayoutEffect, useMemo, useRef } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
+import { MAP_LAYOUT } from '../../config/mapLayout.ts';
 import { groundHeight } from '../../systems/terrain.ts';
+import { useOcclusionOpacity } from '../controllers/useOcclusionOpacity.ts';
 
 interface WaterfallProps {
   pos: [number, number, number];
-  height?: number;
   width?: number;
 }
 
@@ -152,7 +153,7 @@ function Spray({ width, height }: { width: number; height: number }) {
   );
 }
 
-function Pool({ width, height }: { width: number; height: number }) {
+function Pool({ width, height, offsetZ }: { width: number; height: number; offsetZ: number }) {
   const foamRef = useRef<THREE.Group>(null);
   useFrame((state) => {
     const group = foamRef.current;
@@ -166,7 +167,7 @@ function Pool({ width, height }: { width: number; height: number }) {
   });
 
   return (
-    <group position={[0, -height - 0.08, 0.82]}>
+    <group position={[0, -height - 0.08, offsetZ]}>
       <mesh rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
         <circleGeometry args={[width * 1.05, 32]} />
         <meshStandardMaterial color="#3e8cad" transparent opacity={0.68} roughness={0.08} metalness={0.08} depthWrite={false} />
@@ -208,19 +209,73 @@ function CliffAccent({ width, height }: { width: number; height: number }) {
   );
 }
 
-export function Waterfall({ pos, height = 5.2, width = 1.55 }: WaterfallProps) {
+function LipFlow({ width, length }: { width: number; length: number }) {
+  return (
+    <mesh position={[0, 0.06, length * 0.5]} rotation={[-Math.PI / 2, 0, 0]}>
+      <planeGeometry args={[width * 0.88, length, 5, 4]} />
+      <meshStandardMaterial
+        color="#63bddd"
+        emissive="#3a8faf"
+        emissiveIntensity={0.08}
+        transparent
+        opacity={0.72}
+        roughness={0.08}
+        metalness={0.04}
+        side={THREE.DoubleSide}
+        depthWrite={false}
+      />
+    </mesh>
+  );
+}
+
+export function Waterfall({ pos, width = 2.15 }: WaterfallProps) {
   const [x, , z] = pos;
-  const topY = useMemo(() => groundHeight(x, z) + 1.35, [x, z]);
-  const fallHeight = Math.max(4.8, height);
+  const groupRef = useRef<THREE.Group>(null);
+  const occlusionOpacity = useOcclusionOpacity(x, z, 3.1, 0.025);
+  const layout = useMemo(() => {
+    const [poolX, , poolZ] = MAP_LAYOUT.waterfall.pool;
+    const lipY = groundHeight(x, z) + 0.18;
+    const poolY = groundHeight(poolX, poolZ) + 0.12;
+    return {
+      lipY,
+      fallHeight: Math.max(2.4, lipY - poolY),
+      poolOffsetZ: Math.min(3.8, Math.hypot(poolX - x, poolZ - z) * 0.48),
+      yaw: Math.atan2(poolX - x, poolZ - z),
+    };
+  }, [x, z]);
+
+  useEffect(() => {
+    groupRef.current?.traverse((child) => {
+      if (!(child instanceof THREE.Mesh) && !(child instanceof THREE.Line)) return;
+      const materials = Array.isArray(child.material) ? child.material : [child.material];
+      materials.forEach((material) => {
+        if (material.userData.waterfallBaseOpacity === undefined) {
+          material.userData.waterfallBaseOpacity = material.opacity;
+          material.userData.waterfallBaseTransparent = material.transparent;
+          material.userData.waterfallBaseDepthWrite = material.depthWrite;
+        }
+        const faded = occlusionOpacity < 0.98;
+        material.opacity = Number(material.userData.waterfallBaseOpacity) * occlusionOpacity;
+        material.transparent = faded || Boolean(material.userData.waterfallBaseTransparent);
+        material.depthWrite = faded ? false : Boolean(material.userData.waterfallBaseDepthWrite);
+        material.needsUpdate = true;
+      });
+    });
+  }, [occlusionOpacity]);
+
+  const curtainOffset = 1.35;
 
   return (
-    <group position={[x, topY, z]} rotation={[0, 0.42, 0]}>
-      <CliffAccent width={width} height={fallHeight} />
-      <WaterCurtain width={width} height={fallHeight} />
-      <WaterCurtain width={width * 0.62} height={fallHeight * 0.96} />
-      <WaterLines width={width * 0.95} height={fallHeight} />
-      <Spray width={width} height={fallHeight} />
-      <Pool width={width} height={fallHeight} />
+    <group ref={groupRef} position={[x, layout.lipY, z]} rotation={[0, layout.yaw, 0]}>
+      <LipFlow width={width} length={curtainOffset + 0.12} />
+      <group position={[0, 0, curtainOffset]}>
+        <CliffAccent width={width} height={layout.fallHeight} />
+        <WaterCurtain width={width} height={layout.fallHeight} />
+        <WaterCurtain width={width * 0.62} height={layout.fallHeight * 0.96} />
+        <WaterLines width={width * 0.95} height={layout.fallHeight} />
+        <Spray width={width} height={layout.fallHeight} />
+      </group>
+      <Pool width={width * 1.2} height={layout.fallHeight} offsetZ={layout.poolOffsetZ} />
     </group>
   );
 }

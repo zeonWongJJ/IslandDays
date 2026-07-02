@@ -9,7 +9,7 @@ export function ShopBuilding() {
   const scene = useGameStore((s) => s.scene);
   const [x, , z] = MAP_LAYOUT.shop.pos;
   const y = useMemo(() => groundHeight(x, z), [x, z]);
-  const roofOpacity = useOcclusionOpacity(x, z, 4.4, 0.16);
+  const roofOpacity = useOcclusionOpacity(x, z, 4.4, 0.01);
 
   if (scene !== 'island') return null;
 

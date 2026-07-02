@@ -14,6 +14,26 @@ import { useGameStore } from '../store/useGameStore.ts';
 const desired = new THREE.Vector3();
 const target = new THREE.Vector3();
 
+function terrainClearanceHeight(
+  targetX: number,
+  targetY: number,
+  targetZ: number,
+  cameraX: number,
+  cameraZ: number,
+  preferredHeight: number,
+): number {
+  let requiredHeight = preferredHeight;
+  for (let index = 2; index <= 12; index++) {
+    const t = index / 12;
+    const x = THREE.MathUtils.lerp(targetX, cameraX, t);
+    const z = THREE.MathUtils.lerp(targetZ, cameraZ, t);
+    const terrainY = groundHeight(x, z) + 1.35;
+    const cameraHeight = targetY + (terrainY - targetY) / t;
+    requiredHeight = Math.max(requiredHeight, cameraHeight);
+  }
+  return Math.min(requiredHeight, targetY + 24);
+}
+
 export function CameraRig() {
   const { camera, gl } = useThree();
   const { playerRef, cameraYawRef, cameraDistanceRef } = useGameRefs();
@@ -99,13 +119,24 @@ export function CameraRig() {
       camera.lookAt(target);
     } else {
       const height = 6.5;
+      const playerGround = groundHeight(player.position.x, player.position.z);
+      target.set(player.position.x, Math.max(player.position.y, playerGround) + 1.2, player.position.z);
+      const desiredX = player.position.x + Math.sin(yaw) * dist;
+      const desiredZ = player.position.z + Math.cos(yaw) * dist;
+      const preferredHeight = Math.max(player.position.y + height, playerGround + height, 2.5);
       desired.set(
-        player.position.x + Math.sin(yaw) * dist,
-        Math.max(groundHeight(player.position.x, player.position.z) + height, 2.5),
-        player.position.z + Math.cos(yaw) * dist,
+        desiredX,
+        terrainClearanceHeight(
+          target.x,
+          target.y,
+          target.z,
+          desiredX,
+          desiredZ,
+          preferredHeight,
+        ),
+        desiredZ,
       );
       camera.position.lerp(desired, Math.min(1, dt * 6));
-      target.set(player.position.x, groundHeight(player.position.x, player.position.z) + 1.2, player.position.z);
       camera.lookAt(target);
     }
   });

@@ -102,7 +102,7 @@ export function Experience() {
             <RegionalContent />
             <IslandLights />
             <IslandDecorations />
-            <Waterfall pos={MAP_LAYOUT.waterfall.dropPos} height={5.2} width={1.55} />
+            <Waterfall pos={MAP_LAYOUT.waterfall.dropPos} />
             <TreeField />
             <RockField />
             <PlantedField />

@@ -15,7 +15,7 @@ export function getStaticObstacles(): StaticObstacle[] {
   const camp = LANDMARKS.camp;
   return [
     { id: 'plaza-sign', label: '广场告示牌', pos: [MAP_LAYOUT.plaza.pos[0] + 2, 0, MAP_LAYOUT.plaza.pos[2] + 1], radius: 0.42 },
-    { id: 'waterfall-sign', label: '瀑布告示牌', pos: [MAP_LAYOUT.waterfall.pool[0] + 4, 0, MAP_LAYOUT.waterfall.pool[2] - 2], radius: 0.42 },
+    { id: 'waterfall-sign', label: '瀑布告示牌', pos: [MAP_LAYOUT.waterfall.pool[0] + 1, 0, MAP_LAYOUT.waterfall.pool[2] - 7], radius: 0.42 },
     ...camp.tents.map((tent) => ({ id: tent.id, label: '帐篷', pos: [tent.x, 0, tent.z] as Vec3, radius: 1.55 })),
     { id: camp.fire.id, label: '篝火', pos: [camp.fire.x, 0, camp.fire.z] as Vec3, radius: 0.9 },
     { id: camp.logStack.id, label: '木头堆', pos: [camp.logStack.x, 0, camp.logStack.z] as Vec3, radius: 0.85 },

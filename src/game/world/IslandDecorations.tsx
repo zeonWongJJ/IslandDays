@@ -37,7 +37,7 @@ function useDecorations(): Decoration[] {
     decos.push({ x: MAP_LAYOUT.shop.pos[0] - 3.5, z: MAP_LAYOUT.shop.pos[2] + 3.8, kind: 'lamp' });
     decos.push({ x: MAP_LAYOUT.museum.pos[0] - 4.2, z: MAP_LAYOUT.museum.pos[2] + 4.2, kind: 'lamp' });
     decos.push({ x: MAP_LAYOUT.plaza.pos[0] + 2, z: MAP_LAYOUT.plaza.pos[2] + 1, kind: 'sign' });
-    decos.push({ x: MAP_LAYOUT.waterfall.pool[0] + 4, z: MAP_LAYOUT.waterfall.pool[2] - 2, kind: 'sign' });
+    decos.push({ x: MAP_LAYOUT.waterfall.pool[0] + 1, z: MAP_LAYOUT.waterfall.pool[2] - 7, kind: 'sign' });
     MAP_LAYOUT.bridges.forEach((bridge) => {
       const [length, , width] = bridge.size;
       const tx = Math.cos(bridge.rotation);

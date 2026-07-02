@@ -10,7 +10,7 @@ import { useKeyboardControls } from '@react-three/drei';
 import * as THREE from 'three';
 import { WORLD, TREE, BUG, HOUSE, ROOMS, MUSEUM, type RoomId } from '../config/constants.ts';
 import { TOOLS, type ItemId, type ToolId } from '../config/items.ts';
-import { NPCS, npcPositionAt } from '../config/npcs.ts';
+import { NPCS } from '../config/npcs.ts';
 import { ANIMALS, animalPositionAt } from '../config/animals.ts';
 import { MAP_LAYOUT } from '../config/mapLayout.ts';
 import {
@@ -20,7 +20,7 @@ import {
 import { useGameRefs } from './controllers/gameRefsContext.ts';
 import { useGameTimeRef } from './useGameTimeRef.ts';
 import { findInteractionTarget, interactionHint } from './interactions.ts';
-import { blocksWalking, groundKind, isOnBridge, nearestWalkable, SWIM_HEIGHT, walkingHeight } from '../systems/terrain.ts';
+import { blocksWalking, groundKind, isOnBridge, nearestWalkable, resolveWalkableStep, SWIM_HEIGHT, walkingHeight } from '../systems/terrain.ts';
 import { getStaticObstacles } from '../systems/staticObstacles.ts';
 import { buildSpatialGrid, querySpatialGrid } from '../systems/spatialGrid.ts';
 import { acceptsTreePlacement } from '../systems/placement.ts';
@@ -253,16 +253,6 @@ export function Player() {
             tmpNext.set(rock.pos[0] + tmpPush.x * minD, 0, rock.pos[2] + tmpPush.z * minD);
           }
         }
-        for (const npc of NPCS) {
-          const p = npcPositionAt(npc, tRef.current);
-          tmpPush.set(tmpNext.x - p[0], 0, tmpNext.z - p[2]);
-          const nd = tmpPush.length();
-          const minD = WORLD.playerRadius + 0.65;
-          if (nd < minD && nd > 1e-5) {
-            tmpPush.multiplyScalar(1 / nd);
-            tmpNext.set(p[0] + tmpPush.x * minD, 0, p[2] + tmpPush.z * minD);
-          }
-        }
         for (const animal of ANIMALS) {
           const p = animalPositionAt(animal, tRef.current);
           tmpPush.set(tmpNext.x - p[0], 0, tmpNext.z - p[2]);
@@ -320,13 +310,12 @@ export function Player() {
           g.position.set(tmpNext.x, SWIM_HEIGHT, tmpNext.z);
         }
       } else {
-        if (blocksWalking(clamped[0], clamped[2])) {
-          const safe = blocksWalking(g.position.x, g.position.z)
-            ? nearestWalkable(g.position.x, g.position.z)
-            : [g.position.x, walkingHeight(g.position.x, g.position.z), g.position.z];
+        if (blocksWalking(g.position.x, g.position.z)) {
+          const safe = nearestWalkable(g.position.x, g.position.z);
           tmpNext.set(safe[0], 0, safe[2]);
         } else {
-          tmpNext.set(clamped[0], 0, clamped[2]);
+          const safe = resolveWalkableStep(g.position.x, g.position.z, clamped[0], clamped[2]);
+          tmpNext.set(safe[0], 0, safe[1]);
         }
         const gy = walkingHeight(tmpNext.x, tmpNext.z);
         g.position.set(tmpNext.x, gy, tmpNext.z);

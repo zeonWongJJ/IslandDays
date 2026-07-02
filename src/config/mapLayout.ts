@@ -63,7 +63,7 @@ export const MAP_LAYOUT = {
   waterfall: {
     top: [-34, 0, 36] as Vec3,
     dropPos: [-31, 0, 35] as Vec3,
-    pool: [-25, 0, 32] as Vec3,
+    pool: [-27, 0, 36] as Vec3,
   },
   bridges: [
     { id: 'bridge-village', pos: [-13, 0, -4], size: [14, 0.35, 3.0], rotation: 0 },
@@ -82,12 +82,13 @@ export const MAP_LAYOUT = {
     { from: [10, 18], to: [-6, -4], width: 2.2 },
     { from: [-20, -4], to: [-30, 16], width: 2.2 },
     { from: [10, 18], to: [-8, 30], width: 2.2 },
-    { from: [-22, 30], to: [-31, 35], width: 1.8 },
+    { from: [-22, 30], to: [-26, 25], width: 1.8 },
+    { from: [-26, 25], to: [-34, 29], width: 1.8 },
     { from: [10, 18], to: [36, -22], width: 2.1 },
     { from: [30, 0], to: [54, -8], width: 1.8 },
-    { from: [28, 34], to: [18, 57], width: 1.7 },
+    { from: [28, 34], to: [18, 51.5], width: 1.7 },
     { from: [36, -22], to: [40, -56], width: 1.7 },
-    { from: [-30, 16], to: [-51, 31], width: 1.55 },
+    { from: [-30, 16], to: [-42, 31], width: 1.55 },
   ] satisfies RoadSegmentLayout[],
   npcs: [
     {
