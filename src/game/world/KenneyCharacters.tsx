@@ -13,10 +13,10 @@ const ANIMAL_PATHS = {
   dog: 'assets/models/kenney/animals/animal-dog.glb',
 } as const;
 const CHARACTER_PATHS: Record<CharacterStyle, string> = {
-  player: 'assets/models/kenney/characters/character-a.glb',
-  mira: 'assets/models/kenney/characters/character-b.glb',
-  tao: 'assets/models/kenney/characters/character-c.glb',
-  lina: 'assets/models/kenney/characters/character-d.glb',
+  player: 'assets/models/kenney/characters/character-e.glb',
+  mira: 'assets/models/kenney/characters/character-n.glb',
+  tao: 'assets/models/kenney/characters/character-p.glb',
+  lina: 'assets/models/kenney/characters/character-f.glb',
 };
 (Object.values({ ...ANIMAL_PATHS, ...CHARACTER_PATHS }) as string[]).forEach((p) => useGLTF.preload(p));
 
@@ -67,13 +67,15 @@ function CharacterModel({ style, limbRefsRef }: CharacterModelProps) {
   const model = useMemo(() => {
     const clone = scene.clone(true);
     prepareScene(clone);
-    tintCharacterPart(clone, 'torso', cfg.shirt);
-    tintCharacterPart(clone, 'leg-left', cfg.pants);
-    tintCharacterPart(clone, 'leg-right', cfg.pants);
+    if (style === 'player' && clothing.shirt) tintCharacterPart(clone, 'torso', cfg.shirt);
+    if (style === 'player' && clothing.pants) {
+      tintCharacterPart(clone, 'leg-left', cfg.pants);
+      tintCharacterPart(clone, 'leg-right', cfg.pants);
+    }
     const box = new THREE.Box3().setFromObject(clone);
     const size = box.getSize(new THREE.Vector3());
     const center = box.getCenter(new THREE.Vector3());
-    const scale = 2.05 / Math.max(size.x, size.y, size.z, 0.001);
+    const scale = 1.86 / Math.max(size.y, 0.001);
     clone.position.set(-center.x, -box.min.y, -center.z);
     return {
       root: clone,
@@ -83,7 +85,7 @@ function CharacterModel({ style, limbRefsRef }: CharacterModelProps) {
       armLeft: findPart(clone, ['arm-left']),
       armRight: findPart(clone, ['arm-right']),
     };
-  }, [cfg.pants, cfg.shirt, scene]);
+  }, [cfg.pants, cfg.shirt, clothing.pants, clothing.shirt, scene, style]);
 
   useEffect(() => {
     if (!limbRefsRef || !bodyRef.current || !model.legLeft || !model.legRight || !model.armLeft || !model.armRight) return;
@@ -105,7 +107,7 @@ function CharacterModel({ style, limbRefsRef }: CharacterModelProps) {
         <primitive object={model.root} />
       </group>
       <RoleDetails style={style} cfg={cfg} showPlayerHat={style !== 'player' || clothing.hat !== null} />
-      {style === 'player' && (
+      {style === 'player' && clothing.shoes && (
         <>
           <mesh position={[-0.17, 0.13, 0.1]} castShadow>
             <boxGeometry args={[0.23, 0.12, 0.34]} />
@@ -150,10 +152,6 @@ function RoleDetails({ style, cfg, showPlayerHat }: { style: CharacterStyle; cfg
             </mesh>
           </>
         )}
-        <mesh position={[0, 1.06, -0.25]} castShadow>
-          <boxGeometry args={[0.48, 0.58, 0.16]} />
-          <meshStandardMaterial color="#586b88" flatShading roughness={1} />
-        </mesh>
       </group>
     );
   }
@@ -164,24 +162,12 @@ function RoleDetails({ style, cfg, showPlayerHat }: { style: CharacterStyle; cfg
           <coneGeometry args={[0.09, 0.2, 5]} />
           <meshStandardMaterial color={cfg.accent} flatShading roughness={1} />
         </mesh>
-        <mesh position={[0, 0.98, 0.22]} castShadow>
-          <boxGeometry args={[0.48, 0.44, 0.08]} />
-          <meshStandardMaterial color="#f3d0dc" flatShading roughness={1} />
-        </mesh>
       </group>
     );
   }
   if (style === 'tao') {
     return (
       <group>
-        <mesh position={[0, 1.9, 0.03]} castShadow>
-          <cylinderGeometry args={[0.36, 0.32, 0.15, 12]} />
-          <meshStandardMaterial color={cfg.hair} flatShading roughness={1} />
-        </mesh>
-        <mesh position={[0, 1.83, 0.28]} castShadow>
-          <boxGeometry args={[0.66, 0.06, 0.22]} />
-          <meshStandardMaterial color={cfg.hair} flatShading roughness={1} />
-        </mesh>
         <mesh position={[0.42, 1.0, -0.02]} rotation={[0.22, 0, -0.28]} castShadow>
           <cylinderGeometry args={[0.025, 0.025, 0.82, 8]} />
           <meshStandardMaterial color="#76512d" flatShading roughness={1} />
@@ -337,7 +323,6 @@ function prepareScene(scene: THREE.Object3D) {
         cloned.flatShading = true;
         cloned.roughness = Math.max(cloned.roughness, 0.88);
         cloned.metalness = Math.min(cloned.metalness, 0.05);
-        cloned.color.offsetHSL(0, 0.03, -0.01);
       }
       cloned.depthWrite = true;
       cloned.needsUpdate = true;
