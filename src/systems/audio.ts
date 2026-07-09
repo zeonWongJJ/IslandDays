@@ -75,6 +75,8 @@ class SoundManager {
       case 'bite': this.playBite(); break;
       case 'reel': this.playReel(); break;
       case 'catch': this.playCatch(); break;
+      case 'rareCatch': this.playRareCatch(); break;
+      case 'legendCatch': this.playLegendCatch(); break;
       case 'miss': this.playMiss(); break;
       case 'netSwing': this.playNetSwing(); break;
       case 'equip': this.playEquip(); break;
@@ -261,7 +263,65 @@ class SoundManager {
     src.start();
   }
 
-  // ── 鱼跑掉 ──
+  // ── 稀有捕获 — 5 音符上行琶音 ──
+  private playRareCatch() {
+    const ctx = this.ensure();
+    const sr = ctx.sampleRate;
+    const dur = 0.6;
+    const len = sr * dur;
+    const buf = ctx.createBuffer(1, len, sr);
+    const d = buf.getChannelData(0);
+    const notes = [523, 659, 784, 988, 1175];
+    const noteDur = dur / notes.length;
+    for (let i = 0; i < len; i++) {
+      const t = i / sr;
+      const noteIdx = Math.min(Math.floor(t / noteDur), notes.length - 1);
+      const noteT = t - noteIdx * noteDur;
+      const env = Math.max(0, 1 - noteT / noteDur);
+      const freq = notes[noteIdx];
+      d[i] = (Math.sin(2 * Math.PI * freq * t) + Math.sin(2 * Math.PI * freq * 2 * t) * 0.3) * env * 0.18;
+    }
+    const src = ctx.createBufferSource();
+    src.buffer = buf;
+    const g = this.gain(0.3, dur);
+    src.connect(g);
+    src.start();
+  }
+
+  // ── 传说捕获 — 大调琶音 + 延长高音 ──
+  private playLegendCatch() {
+    const ctx = this.ensure();
+    const sr = ctx.sampleRate;
+    const dur = 1.1;
+    const len = sr * dur;
+    const buf = ctx.createBuffer(1, len, sr);
+    const d = buf.getChannelData(0);
+    const notes = [523, 659, 784, 1047, 1319, 1568];
+    const ascendingDur = 0.55;
+    const noteDur = ascendingDur / notes.length;
+    for (let i = 0; i < len; i++) {
+      const t = i / sr;
+      let env: number;
+      let freq: number;
+      if (t < ascendingDur) {
+        const noteIdx = Math.min(Math.floor(t / noteDur), notes.length - 1);
+        const noteT = t - noteIdx * noteDur;
+        env = Math.max(0, 1 - noteT / noteDur) * 0.7;
+        freq = notes[noteIdx];
+      } else {
+        const sustainT = t - ascendingDur;
+        env = Math.max(0, 1 - sustainT / (dur - ascendingDur)) * 0.5;
+        freq = notes[notes.length - 1];
+      }
+      d[i] = (Math.sin(2 * Math.PI * freq * t) + Math.sin(2 * Math.PI * freq * 2 * t) * 0.25 + Math.sin(2 * Math.PI * freq * 3 * t) * 0.1) * env * 0.16;
+    }
+    const src = ctx.createBufferSource();
+    src.buffer = buf;
+    const g = this.gain(0.32, dur);
+    src.connect(g);
+    src.start();
+  }
+
   private playMiss() {
     const ctx = this.ensure();
     const sr = ctx.sampleRate;

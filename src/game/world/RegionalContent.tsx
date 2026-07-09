@@ -81,15 +81,18 @@ function RuinAtmosphere() {
 
 function RuinPuzzle() {
   const progress = useGameStore((s) => s.regionProgress);
+  const daily = useGameStore((s) => s.social.daily);
+  const day = useGameStore((s) => s.clock.day);
   const runeIds: WorldFeatureId[] = ['ruin_rune_1', 'ruin_rune_2', 'ruin_rune_3'];
   const center = LANDMARKS.forestRuins.center;
   const y = groundHeight(center.x, center.z);
+  const currentRunes = progress.ruinChestOpened && daily['ruin:started'] !== day ? 0 : progress.ruinRunes;
 
   return (
     <group>
       {runeIds.map((id, i) => {
         const point = feature(id);
-        const active = progress.ruinRunes >= i + 1 || progress.ruinChestOpened;
+        const active = currentRunes >= i + 1;
         return (
           <group key={id} position={[point.x, groundHeight(point.x, point.z) + 1.05, point.z]}>
             <mesh rotation={[Math.PI / 2, 0, 0]}>
@@ -164,12 +167,15 @@ function VillageStalls() {
 
 function BeachActivities() {
   const progress = useGameStore((s) => s.regionProgress);
+  const day = useGameStore((s) => s.clock.day);
+  const volleyball = useGameStore((s) => s.volleyball);
   const foamRef = useRef<THREE.Group>(null);
   const boatRef = useRef<THREE.Group>(null);
   const ballRef = useRef<THREE.Mesh>(null);
+  const vbResetCheck = useRef(0);
   const shellIds = ['beach_shell_1', 'beach_shell_2', 'beach_shell_3', 'beach_shell_4', 'beach_shell_5'] as const;
 
-  useFrame((state) => {
+  useFrame((state, delta) => {
     const t = state.clock.elapsedTime;
     if (foamRef.current) {
       foamRef.current.children.forEach((child, i) => {
@@ -183,7 +189,21 @@ function BeachActivities() {
       boatRef.current.position.x = 56 + Math.sin(t * 0.12) * 2.5;
     }
     if (ballRef.current) {
-      ballRef.current.position.y = groundHeight(41.5, -55) + 1.1 + Math.abs(Math.sin(t * 2.2)) * 1.2;
+      const now = performance.now();
+      if (volleyball.active && now > volleyball.expiresAt + 600) {
+        vbResetCheck.current += delta;
+        if (vbResetCheck.current > 0.5) {
+          useGameStore.setState({ volleyball: { active: false, hits: 0, targetAt: 0, expiresAt: 0 } });
+          vbResetCheck.current = 0;
+        }
+      } else {
+        vbResetCheck.current = 0;
+      }
+      const challengePhase = volleyball.active
+        ? THREE.MathUtils.clamp(1 - Math.abs(now - volleyball.targetAt) / 900, 0, 1)
+        : Math.abs(Math.sin(t * 2.2));
+      ballRef.current.position.y = groundHeight(41.5, -55) + 0.55 + challengePhase * 2.15;
+      ballRef.current.position.x = 41.5 + Math.sin(t * 1.8) * (volleyball.active ? 0.8 : 0.25);
       ballRef.current.rotation.x += 0.025;
     }
   });
@@ -191,7 +211,7 @@ function BeachActivities() {
   return (
     <group>
       {shellIds.map((id, i) => {
-        if (progress.collectedShells[id]) return null;
+        if (progress.collectedShells[`${id}:${day}`]) return null;
         const point = feature(id);
         return (
           <group key={id} position={[point.x, Math.max(groundHeight(point.x, point.z), -1.05) + 0.13, point.z]} rotation={[0, i * 0.9, 0]}>

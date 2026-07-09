@@ -332,6 +332,18 @@ const migrations: Record<number, Migration> = {
     npcHouseId: (d as Loose).npcHouseId ?? null,
     scene: ((d as Loose).scene === 'npchouse' ? 'npchouse' : (d as Loose).scene === 'house' ? 'house' : (d as Loose).scene === 'museum' ? 'museum' : 'island'),
   }),
+  // v24：collectedShells 格式从 'beach_shell_N' 改为 'beach_shell_N:day'，清理无冒号的旧 key
+  24: (d) => {
+    const rp = (d as Loose).regionProgress as Loose | undefined;
+    if (!rp) return { ...d };
+    const raw = rp.collectedShells as Record<string, true> | undefined;
+    if (!raw) return { ...d };
+    const cleaned: Record<string, true> = {};
+    for (const key of Object.keys(raw)) {
+      if (key.includes(':')) cleaned[key] = true;
+    }
+    return { ...d, regionProgress: { ...rp, collectedShells: cleaned } };
+  },
 };
 
 function isWeather(value: unknown): value is WeatherPattern {

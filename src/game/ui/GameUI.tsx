@@ -4,7 +4,7 @@
 import { useEffect, useState } from 'react';
 import { HUD } from './HUD.tsx';
 import { Toolbar } from './Toolbar.tsx';
-import { DialogueModal, InteractHint, Toasts } from './Overlays.tsx';
+import { DialogueModal, InteractHint, Toasts, CatchFlash } from './Overlays.tsx';
 import { CLOTHING_BY_SLOT, ITEMS, type ClothingSlot, type ItemId, type FurnitureItemId } from '../../config/items.ts';
 import { useGameStore } from '../../store/useGameStore.ts';
 import { ShopUI } from '../shop/ShopUI.tsx';
@@ -13,6 +13,7 @@ import { CollectionPanel } from './CollectionPanel.tsx';
 import { SettingsPanel } from './SettingsPanel.tsx';
 import { MuseumUI } from '../museum/MuseumUI.tsx';
 import { NookPhone } from './NookPhone.tsx';
+import { RegionTracker } from './RegionTracker.tsx';
 
 const INV_ORDER = Object.keys(ITEMS) as ItemId[];
 const ICON: Record<ItemId, string> = {
@@ -159,9 +160,12 @@ export function GameUI() {
   return (
     <div className="game-ui">
       <HUD />
+      <RegionTracker />
       <Toolbar />
       <InteractHint />
       <Toasts />
+      <CatchFlash />
+      <FlashDecay />
       <DialogueModal />
       {showMap && <MiniMap />}
       {showCollection && <CollectionPanel onClose={() => setShowCollection(false)} />}
@@ -303,4 +307,24 @@ function MuseumPanelWrapper() {
       </div>
     </div>
   );
+}
+
+function FlashDecay() {
+  useEffect(() => {
+    let raf = 0;
+    let last = performance.now();
+    const tick = () => {
+      const now = performance.now();
+      const dt = (now - last) / 1000;
+      last = now;
+      const flash = useGameStore.getState().flash;
+      if (flash > 0) {
+        useGameStore.setState({ flash: Math.max(0, flash - dt * 1.8) });
+      }
+      raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, []);
+  return null;
 }

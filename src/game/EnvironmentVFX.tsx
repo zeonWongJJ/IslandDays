@@ -29,6 +29,28 @@ const CLOUD_OFFSETS: [number, number, number][] = [
   [-70, 37, -50],
 ];
 
+const EAST_RIVER_MIST_PATH = [
+  [50, 72],
+  [47, 52],
+  [49, 32],
+  [46, 10],
+  [48, -6],
+  [56, -16],
+  [70, -22],
+] satisfies [number, number][];
+
+function pointOnPath(points: [number, number][], t: number) {
+  const scaled = THREE.MathUtils.clamp(t, 0, 1) * (points.length - 1);
+  const index = Math.min(points.length - 2, Math.floor(scaled));
+  const localT = scaled - index;
+  const from = points[index];
+  const to = points[index + 1];
+  return {
+    x: THREE.MathUtils.lerp(from[0], to[0], localT),
+    z: THREE.MathUtils.lerp(from[1], to[1], localT),
+  };
+}
+
 export function EnvironmentVFX() {
   const day = useGameStore((s) => s.clock.day);
   const season = seasonOf(day);
@@ -215,11 +237,11 @@ function MistBillboards({ patches, speed = 1 }: { patches: MistBillboardPatch[];
 
 function RiverMist() {
   const patches = useMemo<MistPatch[]>(() => {
-    const riverX = -16;
-    return Array.from({ length: 20 }, (_, i) => {
+    const mainRiverX = -16;
+    const mainMist = Array.from({ length: 20 }, (_, i) => {
       const t = i / 19;
       const z = -92 + t * 184;
-      const x = riverX + Math.sin(t * Math.PI * 4) * 7 + Math.sin(i * 1.9) * 2;
+      const x = mainRiverX + Math.sin(t * Math.PI * 4) * 7 + Math.sin(i * 1.9) * 2;
       return {
         x,
         z,
@@ -231,9 +253,26 @@ function RiverMist() {
         color: '#e6efe7',
       };
     });
+    const eastMist = Array.from({ length: 14 }, (_, i) => {
+      const t = i / 13;
+      const point = pointOnPath(EAST_RIVER_MIST_PATH, t);
+      const x = point.x + Math.sin(i * 2.2) * 0.95;
+      const z = point.z + Math.cos(i * 1.8) * 0.8;
+      return {
+        x,
+        z,
+        y: 0.26 + (i % 3) * 0.08,
+        sx: 7 + Math.abs(Math.sin(i * 1.8)) * 6,
+        sz: 3 + Math.abs(Math.cos(i * 1.5)) * 4,
+        phase: i * 0.68 + 2.1,
+        opacity: 0.09,
+        color: '#e6efe7',
+      };
+    });
+    return [...mainMist, ...eastMist];
   }, []);
   const billboards = useMemo<MistBillboardPatch[]>(() => {
-    return Array.from({ length: 10 }, (_, i) => {
+    const mainBB = Array.from({ length: 10 }, (_, i) => {
       const t = i / 9;
       const z = -86 + t * 172;
       const x = -16 + Math.sin(t * Math.PI * 4) * 7 + Math.sin(i * 2.4) * 1.7;
@@ -248,6 +287,23 @@ function RiverMist() {
         color: '#eaf3ee',
       };
     });
+    const eastBB = Array.from({ length: 7 }, (_, i) => {
+      const t = i / 6;
+      const point = pointOnPath(EAST_RIVER_MIST_PATH, t);
+      const x = point.x + Math.sin(i * 2.1) * 0.85;
+      const z = point.z + Math.cos(i * 1.5) * 0.7;
+      return {
+        x,
+        z,
+        y: 1.35 + (i % 3) * 0.22,
+        width: 8 + Math.abs(Math.sin(i * 1.6)) * 6,
+        height: 1.8 + Math.abs(Math.cos(i * 1.2)) * 1.4,
+        phase: i * 0.76 + 1.5,
+        opacity: 0.07,
+        color: '#eaf3ee',
+      };
+    });
+    return [...mainBB, ...eastBB];
   }, []);
   return (
     <Fragment>

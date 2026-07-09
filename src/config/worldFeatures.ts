@@ -41,7 +41,7 @@ export const WORLD_FEATURES: WorldFeaturePoint[] = [
   { id: 'beach_shell_2', x: 36.8, z: -69.5, radius: 1.8, hint: '按 E 捡起贝壳' },
   { id: 'beach_shell_3', x: 42.5, z: -67.2, radius: 1.8, hint: '按 E 捡起贝壳' },
   { id: 'beach_shell_4', x: 47.5, z: -65.8, radius: 1.8, hint: '按 E 捡起贝壳' },
-  { id: 'beach_shell_5', x: 50.5, z: -71.2, radius: 1.8, hint: '按 E 捡起贝壳' },
+  { id: 'beach_shell_5', x: 46.5, z: -70.8, radius: 1.8, hint: '按 E 捡起贝壳' },
   { id: 'beach_volleyball', x: 41.5, z: -55, radius: 3.2, hint: '按 E 挑战沙滩排球' },
   {
     id: 'village_stall_mira',

@@ -22,7 +22,7 @@ export default function App() {
         shadows
         dpr={dpr}
         gl={{
-          antialias: true,
+          antialias: false,
           toneMapping: THREE.ACESFilmicToneMapping,
           toneMappingExposure: 1.05,
         }}
@@ -32,10 +32,10 @@ export default function App() {
         }}
       >
         <PerformanceMonitor
-          flipflops={2}
-          onIncline={() => setDpr(1.5)}
-          onDecline={() => setDpr(1)}
-          onFallback={() => setDpr(1)}
+          flipflops={5}
+          onIncline={() => setDpr(1.25)}
+          onDecline={() => setDpr(0.85)}
+          onFallback={() => setDpr(0.85)}
         />
         <Suspense fallback={null}>
           <Experience />

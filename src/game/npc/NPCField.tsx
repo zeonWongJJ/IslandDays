@@ -1,7 +1,7 @@
 import { useFrame } from '@react-three/fiber';
 import { useMemo, useRef } from 'react';
 import * as THREE from 'three';
-import { NPCS, npcPositionAt, type NpcDef } from '../../config/npcs.ts';
+import { NPCS, npcScheduleAt, type NpcDef } from '../../config/npcs.ts';
 import { HOUSE, TREE } from '../../config/constants.ts';
 import { MAP_LAYOUT } from '../../config/mapLayout.ts';
 import { useGameStore } from '../../store/useGameStore.ts';
@@ -18,6 +18,8 @@ const NPC_YARD_VARIANT: Record<string, number> = { mira: 0, tao: 1, lina: 2 };
 const NPC_STYLE_MAP = { mira: 'mira', tao: 'tao', lina: 'lina' } as const;
 const NPC_MODEL_YAW_OFFSET = Math.PI;
 const NPC_BODY_RADIUS = 0.52;
+const NPC_MOVE_SPEED = 1.25;
+const NPC_STUCK_SECONDS = 1.15;
 
 export function NPCField() {
   const scene = useGameStore((s) => s.scene);
@@ -185,6 +187,7 @@ function NPC({ npc, obstacles }: { npc: NpcDef; obstacles: StaticObstacle[] }) {
   const facingRef = useRef(0);
   const avoidanceSideRef = useRef(npc.id === 'tao' ? -1 : 1);
   const stuckRef = useRef({ elapsed: 0, bestDistance: Number.POSITIVE_INFINITY, recoveries: 0 });
+  const targetAnchorRef = useRef(new THREE.Vector2(Number.NaN, Number.NaN));
   const gameTimeRef = useGameTimeRef();
   const npcObstacles = useMemo(
     () => obstacles.filter((obstacle) => obstacle.id !== `${npc.id}-house`),
@@ -202,7 +205,8 @@ function NPC({ npc, obstacles }: { npc: NpcDef; obstacles: StaticObstacle[] }) {
 
   useFrame((state, delta) => {
     const t = gameTimeRef.current;
-    const destination = npcPositionAt(npc, t);
+    const schedule = npcScheduleAt(npc, t);
+    const destination = schedule.pos;
     if (!initializedRef.current) {
       const safe = nearestWalkable(destination[0], destination[2]);
       navigatorPositionRef.current.set(safe[0], safe[2]);
@@ -212,32 +216,40 @@ function NPC({ npc, obstacles }: { npc: NpcDef; obstacles: StaticObstacle[] }) {
 
     const current = navigatorPositionRef.current;
     const target = new THREE.Vector2(destination[0], destination[2]);
+    if (!Number.isFinite(targetAnchorRef.current.x) || targetAnchorRef.current.distanceTo(target) > 1.2) {
+      targetAnchorRef.current.copy(target);
+      stuckRef.current.bestDistance = current.distanceTo(target);
+      stuckRef.current.elapsed = 0;
+      stuckRef.current.recoveries = 0;
+    }
     const targetDistance = current.distanceTo(target);
-    const waypoint = chooseNpcWaypoint(current, target, npcObstacles, avoidanceSideRef.current);
+    const waypoint = chooseNpcWaypoint(current, target, npcObstacles, avoidanceSideRef.current, stuckRef.current.recoveries);
     waypointRef.current.copy(waypoint);
     const movement = waypoint.clone().sub(current);
     const movementDistance = movement.length();
-    const step = Math.min(movementDistance, delta * 1.35);
+    const step = Math.min(movementDistance, delta * NPC_MOVE_SPEED);
+    const beforeStep = current.clone();
     if (movementDistance > 0.001) {
       movement.multiplyScalar(step / movementDistance);
       current.copy(resolveNpcStep(current, movement, npcObstacles));
     }
 
     const stuck = stuckRef.current;
-    if (targetDistance + 0.08 < stuck.bestDistance) {
+    const frameProgress = beforeStep.distanceTo(current);
+    if (targetDistance + 0.08 < stuck.bestDistance || frameProgress > 0.02) {
       stuck.bestDistance = targetDistance;
       stuck.elapsed = 0;
     } else if (targetDistance > 0.75) {
       stuck.elapsed += delta;
     }
-    if (stuck.elapsed > 1.6) {
+    if (stuck.elapsed > NPC_STUCK_SECONDS) {
       avoidanceSideRef.current *= -1;
       stuck.elapsed = 0;
       stuck.bestDistance = targetDistance;
       stuck.recoveries += 1;
       if (stuck.recoveries >= 3) {
-        const safe = nearestWalkable(destination[0], destination[2]);
-        current.set(safe[0], safe[2]);
+        const recovery = findRecoveryPoint(current, target, npcObstacles);
+        current.copy(recovery);
         stuck.recoveries = 0;
       }
     } else if (targetDistance < 0.5) {
@@ -254,17 +266,20 @@ function NPC({ npc, obstacles }: { npc: NpcDef; obstacles: StaticObstacle[] }) {
     if (movingRef.current) {
       const targetYaw = Math.atan2(dx, dz) + NPC_MODEL_YAW_OFFSET;
       facingRef.current = lerpAngle(facingRef.current, targetYaw, Math.min(1, delta * 10));
+    } else if (schedule.lookAt) {
+      const targetYaw = Math.atan2(x - schedule.lookAt[0], z - schedule.lookAt[2]) + NPC_MODEL_YAW_OFFSET;
+      facingRef.current = lerpAngle(facingRef.current, targetYaw, Math.min(1, delta * 5));
     }
     previousPositionRef.current.set(x, z);
     const hour = t / 60;
     const waveCycle = (state.clock.elapsedTime + npc.homePos[0] * 0.7 + npc.homePos[2] * 0.3) % 14;
     activityRef.current = movingRef.current
       ? 'walk'
-      : waveCycle < 2.4
+      : schedule.activity === 'wave' && waveCycle < 2.4
         ? 'wave'
-        : hour >= 10 && hour < 16
+        : schedule.activity === 'work'
           ? 'work'
-          : hour < 8 || hour >= 18
+          : schedule.activity === 'rest' || hour < 8 || hour >= 20.5
             ? 'rest'
             : 'idle';
     if (groupRef.current) {
@@ -337,6 +352,7 @@ function chooseNpcWaypoint(
   target: THREE.Vector2,
   obstacles: StaticObstacle[],
   side: number,
+  recoveryLevel = 0,
 ): THREE.Vector2 {
   const direction = target.clone().sub(current);
   const length = direction.length();
@@ -354,11 +370,14 @@ function chooseNpcWaypoint(
   }
   if (!nearest) return safeNpcPoint(target, current, obstacles);
   const perpendicular = new THREE.Vector2(-direction.y * side, direction.x * side);
+  const forward = Math.min(2.4 + recoveryLevel * 0.8, Math.max(0.8, length * 0.45));
   const preferred = new THREE.Vector2(nearest.obstacle.pos[0], nearest.obstacle.pos[2])
-    .addScaledVector(perpendicular, nearest.clearance);
+    .addScaledVector(perpendicular, nearest.clearance + recoveryLevel * 0.45)
+    .addScaledVector(direction, forward);
   if (npcPointIsClear(preferred, obstacles)) return preferred;
   const alternate = new THREE.Vector2(nearest.obstacle.pos[0], nearest.obstacle.pos[2])
-    .addScaledVector(perpendicular, -nearest.clearance);
+    .addScaledVector(perpendicular, -nearest.clearance - recoveryLevel * 0.45)
+    .addScaledVector(direction, forward);
   return safeNpcPoint(alternate, current, obstacles);
 }
 
@@ -367,12 +386,28 @@ function resolveNpcStep(
   movement: THREE.Vector2,
   obstacles: StaticObstacle[],
 ): THREE.Vector2 {
+  const forward = movement.clone();
+  const distance = forward.length();
+  if (distance < 0.0001) return current;
+  forward.multiplyScalar(1 / distance);
+  const left = new THREE.Vector2(-forward.y, forward.x);
+  const right = new THREE.Vector2(forward.y, -forward.x);
   const candidates = [
     current.clone().add(movement),
     new THREE.Vector2(current.x + movement.x, current.y),
     new THREE.Vector2(current.x, current.y + movement.y),
+    current.clone().addScaledVector(left, distance),
+    current.clone().addScaledVector(right, distance),
+    current.clone().addScaledVector(forward, distance * 0.55).addScaledVector(left, distance * 0.85),
+    current.clone().addScaledVector(forward, distance * 0.55).addScaledVector(right, distance * 0.85),
   ];
-  return candidates.find((candidate) => npcPointIsClear(candidate, obstacles)) ?? current;
+  const clear = candidates.find((candidate) => npcPointIsClear(candidate, obstacles));
+  if (clear) return clear;
+  const safe = nearestWalkable(current.x + movement.x, current.y + movement.y);
+  const safePoint = new THREE.Vector2(safe[0], safe[2]);
+  return current.distanceTo(safePoint) <= Math.max(1.25, distance * 4) && npcPointIsClear(safePoint, obstacles)
+    ? safePoint
+    : current;
 }
 
 function safeNpcPoint(
@@ -392,6 +427,38 @@ function safeNpcPoint(
     }
   }
   return fallback;
+}
+
+function findRecoveryPoint(
+  current: THREE.Vector2,
+  target: THREE.Vector2,
+  obstacles: StaticObstacle[],
+): THREE.Vector2 {
+  const direction = target.clone().sub(current);
+  const distance = direction.length();
+  if (distance < 0.001) return safeNpcPoint(target, current, obstacles);
+  direction.multiplyScalar(1 / distance);
+  for (let radius = 1.2; radius <= 5.2; radius += 0.8) {
+    let best: THREE.Vector2 | null = null;
+    let bestScore = Number.POSITIVE_INFINITY;
+    for (let index = 0; index < 16; index++) {
+      const angle = index / 16 * Math.PI * 2;
+      const candidate = new THREE.Vector2(
+        current.x + Math.cos(angle) * radius,
+        current.y + Math.sin(angle) * radius,
+      );
+      if (!npcPointIsClear(candidate, obstacles)) continue;
+      const toward = target.distanceTo(candidate);
+      const forwardScore = -candidate.clone().sub(current).dot(direction) * 0.35;
+      const score = toward + forwardScore;
+      if (score < bestScore) {
+        best = candidate;
+        bestScore = score;
+      }
+    }
+    if (best) return best;
+  }
+  return safeNpcPoint(target, current, obstacles);
 }
 
 function npcPointIsClear(point: THREE.Vector2, obstacles: StaticObstacle[]): boolean {

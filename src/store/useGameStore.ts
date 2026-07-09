@@ -50,9 +50,12 @@ function makeRng(seed: number) {
   };
 }
 
+type ToastKind = 'normal' | 'rare' | 'legend' | 'combo';
+
 interface Toast {
   id: number;
   text: string;
+  kind: ToastKind;
 }
 
 export type FishingPhase = 'idle' | 'casting' | 'waiting' | 'hooked' | 'reeling' | 'caught';
@@ -70,6 +73,13 @@ interface DialogueState {
   role: string;
   color: string;
   text: string;
+}
+
+interface VolleyballSession {
+  active: boolean;
+  hits: number;
+  targetAt: number;
+  expiresAt: number;
 }
 
 interface GameState extends SaveData {
@@ -94,6 +104,12 @@ interface GameState extends SaveData {
   museumPanel: boolean;
   /** 是否已通过标题画面进入游戏。瞬时状态，不持久化。 */
   booted: boolean;
+  /** 沙滩排球的瞬时节奏挑战，不写入存档。 */
+  volleyball: VolleyballSession;
+  /** 捕获稀有物时的全屏闪光强度（0=无，1=最强），瞬时状态。 */
+  flash: number;
+  /** 连续捕获计数（同一次连续捕获鱼/虫不中断），用于 combo 提示。 */
+  catchCombo: number;
 
   // ───────── 动作 ─────────
   setPlayer: (pos: Vec3, yaw: number) => void;
@@ -109,7 +125,7 @@ interface GameState extends SaveData {
   regrowDue: () => void;
   tickClock: () => void;
   setWeather: (weather: WeatherPattern) => void;
-  pushToast: (text: string) => void;
+  pushToast: (text: string, kind?: ToastKind) => void;
   dismissToast: (id: number) => void;
   setInteractHint: (text: string | null) => void;
   resetGame: (name?: string) => void;
@@ -306,6 +322,9 @@ export const useGameStore = create<GameState>()(
       currentRoom: 'living' as RoomId,
       museumPanel: false,
       booted: false,
+      volleyball: { active: false, hits: 0, targetAt: 0, expiresAt: 0 },
+      flash: 0,
+      catchCombo: 0,
 
       setPlayer: (pos, yaw) =>
         set((s) => ({ player: { ...s.player, pos, yaw } })),
@@ -494,16 +513,30 @@ export const useGameStore = create<GameState>()(
       },
 
       tickClock: () => {
+        const prev = get().clock;
         const nextClock = realClockNow();
         const now = nextClock.day * CLOCK.minutesPerDay + nextClock.minutes;
-        set((s) => ({
-          clock: nextClock,
-          rocks: s.rocks.map((r) =>
-            r.state === 'depleted' && r.respawnAt !== null && r.respawnAt <= now
-              ? { ...r, state: 'intact', respawnAt: null }
-              : r,
-          ),
-        }));
+        const dayChanged = prev.day !== nextClock.day;
+        set((s) => {
+          const base: Partial<GameState> = {
+            clock: nextClock,
+            rocks: s.rocks.map((r) =>
+              r.state === 'depleted' && r.respawnAt !== null && r.respawnAt <= now
+                ? { ...r, state: 'intact' as const, respawnAt: null }
+                : r,
+            ),
+          };
+          if (!dayChanged) return base;
+          const dayPrefix = `:${nextClock.day}`;
+          const keptShells: Record<string, true> = {};
+          for (const key of Object.keys(s.regionProgress.collectedShells)) {
+            if (key.endsWith(dayPrefix)) keptShells[key] = true;
+          }
+          return {
+            ...base,
+            regionProgress: { ...s.regionProgress, collectedShells: keptShells },
+          };
+        });
         get().growPlants();
         get().checkTurnipSpoil();
         const dayOfWeek = nextClock.day % 7;
@@ -530,10 +563,11 @@ export const useGameStore = create<GameState>()(
 
       setWeather: (weather) => set({ weather }),
 
-      pushToast: (text) => {
+      pushToast: (text, kind = 'normal') => {
         const id = toastSeq++;
-        set((s) => ({ toasts: [...s.toasts, { id, text }] }));
-        setTimeout(() => get().dismissToast(id), 3000);
+        set((s) => ({ toasts: [...s.toasts, { id, text, kind }] }));
+        const ttl = kind === 'legend' ? 4500 : kind === 'rare' ? 3800 : 3000;
+        setTimeout(() => get().dismissToast(id), ttl);
       },
 
       dismissToast: (id) => set((s) => ({ toasts: s.toasts.filter((t) => t.id !== id) })),
@@ -562,6 +596,9 @@ export const useGameStore = create<GameState>()(
           dialogue: null,
           museumPanel: false,
           booted: true,
+          volleyball: { active: false, hits: 0, targetAt: 0, expiresAt: 0 },
+          flash: 0,
+          catchCombo: 0,
           swimming: false,
           quests: [],
           clothing: { hat: null, shirt: null, pants: null, shoes: null },
@@ -837,15 +874,28 @@ export const useGameStore = create<GameState>()(
         const dur = s.tools.fishingRod ?? 0;
         const newDur = Math.max(0, dur - TOOL_USE.fishCost);
         const readyAt = s.clock.day * CLOCK.minutesPerDay + s.clock.minutes + FISH.cooldownMinutes;
+        const rarity = ITEMS[itemId].rarity;
+        const combo = s.catchCombo + 1;
         set({
           inventory: { ...s.inventory, [itemId]: Math.min((s.inventory[itemId] ?? 0) + 1, ITEMS[itemId].stack) },
           tools: { ...s.tools, fishingRod: newDur },
           fishSpots: s.fishSpots.map((f) => (f.id === spotId ? { ...f, state: 'cooling', readyAt } : f)),
           fishing: { phase: 'idle', spotId: null, prompt: null, reelingProgress: 0 },
           collection: { ...s.collection, [itemId]: true as const },
+          catchCombo: combo,
+          flash: rarity === 'legend' ? 1 : rarity === 'rare' ? 0.4 : 0,
         });
         get().updateQuestProgress(itemId, 1);
-        get().pushToast(`钓到了${ITEMS[itemId].name}！`);
+        const name = ITEMS[itemId].name;
+        if (rarity === 'legend') {
+          get().pushToast(`✨ 传说捕获！${name}！✨`, 'legend');
+        } else if (rarity === 'rare') {
+          get().pushToast(`★ 稀有捕获！${name}！`, 'rare');
+        } else if (combo >= 3) {
+          get().pushToast(`钓到了${name}！${combo}连击！`, 'combo');
+        } else {
+          get().pushToast(`钓到了${name}！`);
+        }
       },
 
       missFish: () => {
@@ -855,6 +905,7 @@ export const useGameStore = create<GameState>()(
         set({
           tools: { ...s.tools, fishingRod: newDur },
           fishing: { phase: 'idle', spotId: null, prompt: null, reelingProgress: 0 },
+          catchCombo: 0,
         });
         get().pushToast('鱼跑了…');
       },
@@ -888,14 +939,27 @@ export const useGameStore = create<GameState>()(
         }
         const newDur = Math.max(0, dur - TOOL_USE.netCost);
         const readyAt = s.clock.day * CLOCK.minutesPerDay + s.clock.minutes + BUG.cooldownMinutes;
+        const rarity = ITEMS[itemId].rarity;
+        const combo = s.catchCombo + 1;
         set({
           inventory: { ...s.inventory, [itemId]: Math.min((s.inventory[itemId] ?? 0) + 1, ITEMS[itemId].stack) },
           tools: { ...s.tools, net: newDur },
           bugs: s.bugs.map((b) => (b.id === spotId ? { ...b, state: 'cooling', readyAt, fleeAt: null } : b)),
           collection: { ...s.collection, [itemId]: true as const },
+          catchCombo: combo,
+          flash: rarity === 'legend' ? 1 : rarity === 'rare' ? 0.4 : 0,
         });
         get().updateQuestProgress(itemId, 1);
-        get().pushToast(`捕到了${ITEMS[itemId].name}！`);
+        const name = ITEMS[itemId].name;
+        if (rarity === 'legend') {
+          get().pushToast(`✨ 传说捕获！${name}！✨`, 'legend');
+        } else if (rarity === 'rare') {
+          get().pushToast(`★ 稀有捕获！${name}！`, 'rare');
+        } else if (combo >= 3) {
+          get().pushToast(`捕到了${name}！${combo}连击！`, 'combo');
+        } else {
+          get().pushToast(`捕到了${name}！`);
+        }
         return true;
       },
 
@@ -915,6 +979,7 @@ export const useGameStore = create<GameState>()(
         set({
           tools: { ...s.tools, net: newDur },
           bugs: s.bugs.map((b) => (b.id === spotId ? { ...b, state: 'cooling', readyAt, fleeAt: null } : b)),
+          catchCombo: 0,
         });
         get().pushToast('虫飞走了…');
         return true;
@@ -1211,19 +1276,41 @@ export const useGameStore = create<GameState>()(
       interactWorldFeature: (id) => {
         const s = get();
         if (id.startsWith('ruin_rune_')) {
-          if (s.regionProgress.ruinChestOpened) {
-            get().pushToast('遗迹符文已经恢复平静');
+          const dailyKey = 'ruin:trial';
+          const startedKey = 'ruin:started';
+          if (s.regionProgress.ruinChestOpened && s.social.daily[dailyKey] === s.clock.day) {
+            get().pushToast('今天的符文试炼已经完成了');
             return;
           }
           const rune = Number(id.slice(-1));
-          const expected = s.regionProgress.ruinRunes + 1;
+          const startedToday = s.social.daily[startedKey] === s.clock.day;
+          const currentRunes = s.regionProgress.ruinChestOpened && !startedToday ? 0 : s.regionProgress.ruinRunes;
+          const expected = currentRunes + 1;
           if (rune !== expected) {
-            set({ regionProgress: { ...s.regionProgress, ruinRunes: 0 } });
+            set({
+              regionProgress: { ...s.regionProgress, ruinRunes: 0 },
+              social: { ...s.social, daily: { ...s.social.daily, [startedKey]: s.clock.day } },
+            });
             get().pushToast('符文顺序错误，光芒全部熄灭了');
             return;
           }
-          set({ regionProgress: { ...s.regionProgress, ruinRunes: rune } });
-          get().pushToast(rune === 3 ? '符文共鸣，中央宝箱解锁了！' : `第 ${rune} 个符文亮了起来`);
+          if (rune === 3 && s.regionProgress.ruinChestOpened) {
+            set({
+              player: { ...s.player, bells: s.player.bells + 320 },
+              regionProgress: { ...s.regionProgress, ruinRunes: 3 },
+              social: {
+                ...s.social,
+                daily: { ...s.social.daily, [startedKey]: s.clock.day, [dailyKey]: s.clock.day },
+              },
+            });
+            get().pushToast('每日符文试炼完成，获得 320 铃钱！');
+          } else {
+            set({
+              regionProgress: { ...s.regionProgress, ruinRunes: rune },
+              social: { ...s.social, daily: { ...s.social.daily, [startedKey]: s.clock.day } },
+            });
+            get().pushToast(rune === 3 ? '符文共鸣，中央宝箱解锁了！' : `第 ${rune} 个符文亮了起来`);
+          }
           return;
         }
         if (id === 'ruin_chest') {
@@ -1248,12 +1335,13 @@ export const useGameStore = create<GameState>()(
           return;
         }
         if (id.startsWith('beach_shell_')) {
-          if (s.regionProgress.collectedShells[id]) {
-            get().pushToast('这里的贝壳已经捡过了');
+          const shellKey = `${id}:${s.clock.day}`;
+          if (s.regionProgress.collectedShells[shellKey]) {
+            get().pushToast('今天这里的贝壳已经捡过了');
             return;
           }
-          const collectedShells = { ...s.regionProgress.collectedShells, [id]: true as const };
-          const count = Object.keys(collectedShells).length;
+          const collectedShells = { ...s.regionProgress.collectedShells, [shellKey]: true as const };
+          const count = Object.keys(collectedShells).filter((key) => key.endsWith(`:${s.clock.day}`)).length;
           const reward = count === 5 ? 800 : 80;
           set({
             player: { ...s.player, bells: s.player.bells + reward },
@@ -1267,12 +1355,34 @@ export const useGameStore = create<GameState>()(
             get().pushToast('今天已经完成排球挑战了');
             return;
           }
-          const reward = 180 + Math.floor(Math.random() * 121);
-          set({
-            player: { ...s.player, bells: s.player.bells + reward },
-            regionProgress: { ...s.regionProgress, volleyballDay: s.clock.day },
-          });
-          get().pushToast(`排球挑战成功，获得 ${reward} 铃钱！`);
+          const now = performance.now();
+          if (!s.volleyball.active) {
+            set({ volleyball: { active: true, hits: 0, targetAt: now + 900, expiresAt: now + 1400 } });
+            get().pushToast('排球挑战开始：球落到身前时按 E！');
+            return;
+          }
+          const timingError = Math.abs(now - s.volleyball.targetAt);
+          if (now > s.volleyball.expiresAt || timingError > 360) {
+            set({ volleyball: { active: false, hits: 0, targetAt: 0, expiresAt: 0 } });
+            get().pushToast('击球时机不对，挑战失败了');
+            return;
+          }
+          const hits = s.volleyball.hits + 1;
+          if (hits >= 3) {
+            const reward = 360;
+            set({
+              player: { ...s.player, bells: s.player.bells + reward },
+              regionProgress: { ...s.regionProgress, volleyballDay: s.clock.day },
+      volleyball: { active: false, hits: 0, targetAt: 0, expiresAt: 0 },
+      flash: 0,
+      catchCombo: 0,
+            });
+            get().pushToast(`连续三次击球成功，获得 ${reward} 铃钱！`);
+            return;
+          }
+          const delay = 760 + hits * 120;
+          set({ volleyball: { active: true, hits, targetAt: now + delay, expiresAt: now + delay + 480 } });
+          get().pushToast(`漂亮！${hits}/3，准备下一球`);
           return;
         }
         const npcId: NpcId = id.endsWith('mira') ? 'mira' : id.endsWith('tao') ? 'tao' : 'lina';
@@ -1286,11 +1396,20 @@ export const useGameStore = create<GameState>()(
           get().pushToast(`${ITEMS[reward].name}已满，清理背包后再来`);
           return;
         }
+        const nextDaily = { ...s.social.daily, [dailyKey]: s.clock.day };
+        const completedMarket = (['mira', 'tao', 'lina'] as NpcId[])
+          .every((residentId) => nextDaily[`stall:${residentId}`] === s.clock.day);
+        const marketRewardKey = 'village:market';
+        const firstCompletion = completedMarket && nextDaily[marketRewardKey] !== s.clock.day;
+        if (firstCompletion) nextDaily[marketRewardKey] = s.clock.day;
         set({
+          player: firstCompletion ? { ...s.player, bells: s.player.bells + 420 } : s.player,
           inventory: { ...s.inventory, [reward]: Math.min((s.inventory[reward] ?? 0) + 1, ITEMS[reward].stack) },
-          social: { ...s.social, daily: { ...s.social.daily, [dailyKey]: s.clock.day } },
+          social: { ...s.social, daily: nextDaily },
         });
-        get().pushToast(`摊位体验奖励：${ITEMS[reward].name}`);
+        get().pushToast(firstCompletion
+          ? `集市巡游完成：${ITEMS[reward].name}和 420 铃钱！`
+          : `摊位体验奖励：${ITEMS[reward].name}`);
       },
 
       closeDialogue: () => set({ dialogue: null }),

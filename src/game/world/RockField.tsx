@@ -1,16 +1,41 @@
+import { useRef } from 'react';
+import { useFrame } from '@react-three/fiber';
+import * as THREE from 'three';
 import { useGameStore } from '../../store/useGameStore.ts';
 import { groundHeight } from '../../systems/terrain.ts';
-import { DistanceCulled } from './DistanceCulled.tsx';
+import { useGameRefs } from '../controllers/gameRefsContext.ts';
 import { KenneyRock } from './KenneyModels.tsx';
+
+const CULL_RADIUS = 95;
+const CULL_RADIUS_SQ = CULL_RADIUS * CULL_RADIUS;
 
 export function RockField() {
   const rocks = useGameStore((s) => s.rocks);
+  const groupRef = useRef<THREE.Group>(null);
+  const checkRef = useRef(0);
+  const { playerRef } = useGameRefs();
+
+  useFrame((_, delta) => {
+    const group = groupRef.current;
+    const player = playerRef.current;
+    if (!group || !player) return;
+    checkRef.current += delta;
+    if (checkRef.current < 0.3) return;
+    checkRef.current = 0;
+    const px = player.position.x;
+    const pz = player.position.z;
+    for (let i = 0; i < group.children.length; i++) {
+      const child = group.children[i];
+      const dx = child.position.x - px;
+      const dz = child.position.z - pz;
+      child.visible = dx * dx + dz * dz <= CULL_RADIUS_SQ;
+    }
+  });
+
   return (
-    <group>
+    <group ref={groupRef}>
       {rocks.map((r, index) => (
-        <DistanceCulled key={r.id} center={r.pos} radius={95}>
-          <Rock pos={r.pos} depleted={r.state === 'depleted'} variant={index} />
-        </DistanceCulled>
+        <Rock key={r.id} pos={r.pos} depleted={r.state === 'depleted'} variant={index} />
       ))}
     </group>
   );

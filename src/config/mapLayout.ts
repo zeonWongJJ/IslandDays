@@ -68,12 +68,15 @@ export const MAP_LAYOUT = {
   bridges: [
     { id: 'bridge-village', pos: [-13, 0, -4], size: [14, 0.35, 3.0], rotation: 0 },
     { id: 'bridge-forest', pos: [-15, 0, 30], size: [14, 0.35, 3.0], rotation: 0 },
+    { id: 'bridge-east', pos: [48, 0, -6], size: [14, 0.35, 3.0], rotation: 0 },
   ] satisfies BridgeLayout[],
   bridgePads: [
     { id: 'bridge-village-west', pos: [-20, 0, -4], radius: 5.2, height: 1.12, buildable: false },
     { id: 'bridge-village-east', pos: [-6, 0, -4], radius: 5.2, height: 1.12, buildable: false },
     { id: 'bridge-forest-west', pos: [-22, 0, 30], radius: 5.2, height: 1.12, buildable: false },
     { id: 'bridge-forest-east', pos: [-8, 0, 30], radius: 5.2, height: 1.12, buildable: false },
+    { id: 'bridge-east-west', pos: [41, 0, -6], radius: 5.2, height: 1.12, buildable: false },
+    { id: 'bridge-east-east', pos: [55, 0, -6], radius: 5.2, height: 1.12, buildable: false },
   ] satisfies LandPadLayout[],
   roads: [
     { from: [0, 16], to: [10, 18], width: 2.3 },

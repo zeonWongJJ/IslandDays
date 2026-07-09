@@ -137,6 +137,42 @@ canvas { display: block; touch-action: none; }
   align-items: center;
   gap: 6px;
 }
+.toast-rare {
+  border-color: rgba(100, 180, 255, 0.6);
+  background: linear-gradient(135deg, rgba(220, 240, 255, 0.95), rgba(200, 225, 255, 0.9));
+  box-shadow: 0 3px 14px rgba(80, 160, 255, 0.3);
+  animation: toast-in 0.2s ease-out, toast-glow-rare 1.5s ease-in-out infinite;
+}
+.toast-legend {
+  border-color: rgba(255, 200, 80, 0.7);
+  background: linear-gradient(135deg, rgba(255, 245, 200, 0.95), rgba(255, 220, 140, 0.9));
+  box-shadow: 0 3px 18px rgba(255, 180, 60, 0.4);
+  font-size: 15px;
+  animation: toast-in 0.3s ease-out, toast-glow-legend 1s ease-in-out infinite;
+}
+.toast-combo {
+  border-color: rgba(255, 140, 80, 0.5);
+  background: linear-gradient(135deg, rgba(255, 235, 210, 0.95), rgba(255, 215, 180, 0.9));
+  animation: toast-in 0.2s ease-out;
+}
+@keyframes toast-glow-rare {
+  0%, 100% { box-shadow: 0 3px 14px rgba(80, 160, 255, 0.3); }
+  50% { box-shadow: 0 3px 18px rgba(80, 160, 255, 0.5); }
+}
+@keyframes toast-glow-legend {
+  0%, 100% { box-shadow: 0 3px 18px rgba(255, 180, 60, 0.4); transform: scale(1); }
+  50% { box-shadow: 0 4px 24px rgba(255, 180, 60, 0.6); transform: scale(1.03); }
+}
+
+/* 全屏捕获闪光 */
+.catch-flash {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at center, rgba(255, 250, 220, 0.9), rgba(255, 240, 180, 0.4) 40%, transparent 70%);
+  pointer-events: none;
+  z-index: 50;
+  transition: opacity 0.05s linear;
+}
 
 /* NPC 对话框 */
 .dialogue-wrap {
@@ -353,6 +389,81 @@ canvas { display: block; touch-action: none; }
 .minimap-legend .legend-player {
   border-radius: 50%;
   background: #f04d42;
+}
+.minimap-region-marker {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  z-index: 4;
+  width: 18px;
+  height: 18px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  color: #fff;
+  background: #d37836;
+  border: 2px solid #fff;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.38);
+  font-size: 10px;
+  font-weight: 800;
+}
+.minimap-region-marker.complete { background: #4f9461; }
+.legend-objective {
+  background: #d37836 !important;
+  border: 1px solid #fff;
+}
+
+.region-tracker {
+  position: absolute;
+  top: 104px;
+  right: 14px;
+  width: 228px;
+  padding: 9px 10px;
+  background: rgba(35, 31, 25, 0.78);
+  color: #fff;
+  border: 1px solid rgba(255,255,255,0.18);
+  border-radius: 8px;
+  box-shadow: 0 6px 18px rgba(0,0,0,0.2);
+  pointer-events: none;
+}
+.region-tracker > strong {
+  display: block;
+  font-size: 12px;
+  margin-bottom: 6px;
+  color: #f0d7a7;
+}
+.region-track-row {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 30px;
+  border-top: 1px solid rgba(255,255,255,0.1);
+}
+.region-track-row.complete { opacity: 0.58; }
+.region-track-icon {
+  width: 16px;
+  text-align: center;
+  color: #f2c56d;
+  font-size: 12px;
+}
+.region-track-main {
+  min-width: 0;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  font-size: 11px;
+}
+.region-track-main small {
+  color: rgba(255,255,255,0.66);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.region-track-row b {
+  font-size: 11px;
+  color: #f4e4c5;
+}
+@media (max-width: 900px), (max-height: 620px) {
+  .region-tracker { display: none; }
 }
 
 /* 右上按钮 */
@@ -816,6 +927,40 @@ canvas { display: block; touch-action: none; }
 }
 .nookphone-map-hint {
   text-align: center; color: #8a8aaa; font-size: 13px; padding: 20px 0;
+}
+.region-objective-heading {
+  padding: 5px 2px 1px;
+  color: #d7ad65;
+  font-size: 12px;
+  font-weight: 800;
+}
+.region-objective-row {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 9px 10px;
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 8px;
+  background: rgba(255,255,255,0.06);
+  color: #e8e8f0;
+}
+.region-objective-row.complete {
+  border-color: rgba(105, 190, 130, 0.35);
+  background: rgba(75, 145, 95, 0.14);
+}
+.region-objective-icon {
+  width: 22px;
+  height: 22px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: rgba(215, 173, 101, 0.16);
+  color: #e5bb72;
+  font-weight: 800;
+}
+.region-objective-row.complete .region-objective-icon {
+  color: #8bd39e;
+  background: rgba(105, 190, 130, 0.15);
 }
 .quest-list {
   display: flex;

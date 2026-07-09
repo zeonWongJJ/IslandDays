@@ -354,6 +354,7 @@ function FlowerChunk({ chunk }: { chunk: Chunk<FlowerInstance> }) {
   const headRef = useRef<THREE.InstancedMesh>(null);
   const dummy = useMemo(() => new THREE.Object3D(), []);
   const checkRef = useRef(0);
+  const yCache = useRef<Float32Array>(new Float32Array(0));
   const { playerRef } = useGameRefs();
 
   useLayoutEffect(() => {
@@ -362,8 +363,10 @@ function FlowerChunk({ chunk }: { chunk: Chunk<FlowerInstance> }) {
     if (!stem || !head) return;
     stem.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
     head.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+    const ys = new Float32Array(chunk.items.length);
     chunk.items.forEach((f, i) => {
       const y = groundHeight(f.x, f.z);
+      ys[i] = y;
       dummy.position.set(f.x, y + f.s * 0.3, f.z);
       dummy.rotation.set(0, f.rot, 0);
       dummy.scale.set(f.s, f.s, f.s);
@@ -374,6 +377,7 @@ function FlowerChunk({ chunk }: { chunk: Chunk<FlowerInstance> }) {
       head.setMatrixAt(i, dummy.matrix);
       head.setColorAt(i, new THREE.Color(f.color));
     });
+    yCache.current = ys;
     stem.instanceMatrix.needsUpdate = true;
     head.instanceMatrix.needsUpdate = true;
     if (head.instanceColor) head.instanceColor.needsUpdate = true;
@@ -392,8 +396,9 @@ function FlowerChunk({ chunk }: { chunk: Chunk<FlowerInstance> }) {
     }
     if (!group.visible || !stemRef.current || !headRef.current) return;
     const t = state.clock.elapsedTime;
+    const ys = yCache.current;
     chunk.items.forEach((f, i) => {
-      const y = groundHeight(f.x, f.z);
+      const y = ys[i];
       const phase = t * 1.9 + f.x * 0.23 + f.z * 0.17;
       const sway = Math.sin(phase) * 0.12 + Math.sin(phase * 1.7) * 0.035;
       const bendX = Math.cos(f.rot) * sway;
@@ -438,6 +443,7 @@ function GrassChunk({ chunk, variant }: { chunk: Chunk<GrassInstance>; variant: 
   const meshRef = useRef<THREE.InstancedMesh>(null);
   const dummy = useMemo(() => new THREE.Object3D(), []);
   const checkRef = useRef(0);
+  const yCache = useRef<Float32Array>(new Float32Array(0));
   const { playerRef } = useGameRefs();
   const { scene } = useGLTF(GRASS_MODEL_PATHS[variant]);
   const source = useMemo(() => {
@@ -465,14 +471,17 @@ function GrassChunk({ chunk, variant }: { chunk: Chunk<GrassInstance>; variant: 
     const mesh = meshRef.current;
     if (!mesh) return;
     mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+    const ys = new Float32Array(chunk.items.length);
     chunk.items.forEach((g, i) => {
       const y = groundHeight(g.x, g.z);
+      ys[i] = y;
       dummy.position.set(g.x, y, g.z);
       dummy.rotation.set(0, g.rot, 0);
       dummy.scale.set(g.s, g.s, g.s);
       dummy.updateMatrix();
       mesh.setMatrixAt(i, dummy.matrix);
     });
+    yCache.current = ys;
     mesh.instanceMatrix.needsUpdate = true;
   }, [chunk.items, dummy]);
 
@@ -489,8 +498,9 @@ function GrassChunk({ chunk, variant }: { chunk: Chunk<GrassInstance>; variant: 
     }
     if (!group.visible) return;
     const t = state.clock.elapsedTime;
+    const ys = yCache.current;
     chunk.items.forEach((g, i) => {
-      const y = groundHeight(g.x, g.z);
+      const y = ys[i];
       const phase = t * 2.2 + g.x * 0.19 - g.z * 0.21;
       const sway = Math.sin(phase) * 0.16 + Math.sin(phase * 1.6) * 0.05;
       const bendX = Math.cos(g.rot) * sway;
@@ -530,14 +540,17 @@ function LowGrassChunk({ chunk, color, variant }: { chunk: Chunk<LowGrassInstanc
   const meshRef = useRef<THREE.InstancedMesh>(null);
   const dummy = useMemo(() => new THREE.Object3D(), []);
   const checkRef = useRef(0);
+  const yCache = useRef<Float32Array>(new Float32Array(0));
   const { playerRef } = useGameRefs();
 
   useLayoutEffect(() => {
     const mesh = meshRef.current;
     if (!mesh) return;
     mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+    const ys = new Float32Array(chunk.items.length);
     chunk.items.forEach((g, i) => {
       const y = groundHeight(g.x, g.z);
+      ys[i] = y;
       const yOffset = variant === 'a' ? 0.13 * g.s : 0.1 * g.s;
       dummy.position.set(g.x, y + yOffset, g.z);
       dummy.rotation.set(variant === 'a' ? g.lean : g.lean * 0.6, g.rot, variant === 'a' ? -g.lean * 0.4 : -g.lean);
@@ -545,6 +558,7 @@ function LowGrassChunk({ chunk, color, variant }: { chunk: Chunk<LowGrassInstanc
       dummy.updateMatrix();
       mesh.setMatrixAt(i, dummy.matrix);
     });
+    yCache.current = ys;
     mesh.instanceMatrix.needsUpdate = true;
   }, [chunk.items, dummy, variant]);
 
@@ -561,8 +575,9 @@ function LowGrassChunk({ chunk, color, variant }: { chunk: Chunk<LowGrassInstanc
     }
     if (!group.visible) return;
     const t = state.clock.elapsedTime;
+    const ys = yCache.current;
     chunk.items.forEach((g, i) => {
-      const y = groundHeight(g.x, g.z);
+      const y = ys[i];
       const phase = variant === 'a' ? t * 2.6 + g.x * 0.33 + g.z * 0.12 : t * 2.35 + g.x * 0.22 - g.z * 0.29;
       const sway = Math.sin(phase) * (variant === 'a' ? 0.16 : 0.13) + Math.sin(phase * (variant === 'a' ? 1.9 : 1.7)) * (variant === 'a' ? 0.04 : 0.035);
       const yOffset = variant === 'a' ? 0.13 * g.s : 0.1 * g.s;

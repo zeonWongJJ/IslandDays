@@ -6,6 +6,7 @@ import { SettingsPanel } from './SettingsPanel.tsx';
 import { currentEvent } from '../../config/events.ts';
 import { npcById } from '../../config/npcs.ts';
 import { getQuestDescription, getQuestTypeIcon } from '../../systems/quest.ts';
+import { getRegionObjectives } from '../../systems/regionObjectives.ts';
 
 type AppId = 'home' | 'map' | 'collection' | 'quests' | 'settings' | 'help';
 
@@ -29,9 +30,13 @@ export function NookPhone({ onClose }: { onClose: () => void }) {
   const bells = useGameStore((s) => s.player.bells);
   const scene = useGameStore((s) => s.scene);
   const quests = useGameStore((s) => s.quests);
+  const social = useGameStore((s) => s.social);
+  const regionProgress = useGameStore((s) => s.regionProgress);
+  const volleyball = useGameStore((s) => s.volleyball);
   const acceptQuest = useGameStore((s) => s.acceptQuest);
   const claimQuestReward = useGameStore((s) => s.claimQuestReward);
   const ev = currentEvent(clock.day);
+  const regionObjectives = getRegionObjectives({ clock, social, regionProgress, volleyball });
 
   const timeStr = formatClock(clock.minutes);
   const dayStr = `第 ${clock.day} 天`;
@@ -89,6 +94,18 @@ export function NookPhone({ onClose }: { onClose: () => void }) {
                 <span>📋 今日委托</span>
               </div>
               <div className="quest-list">
+                <div className="region-objective-heading">区域探索</div>
+                {regionObjectives.map((objective) => (
+                  <div className={`region-objective-row ${objective.completed ? 'complete' : ''}`} key={objective.id}>
+                    <span className="region-objective-icon">{objective.completed ? '✓' : objective.icon}</span>
+                    <span className="quest-main">
+                      <strong>{objective.regionName} · {objective.title}</strong>
+                      <span>{objective.detail}</span>
+                      <small>{objective.progress}/{objective.total}</small>
+                    </span>
+                  </div>
+                ))}
+                <div className="region-objective-heading">居民委托</div>
                 {quests.map((quest) => {
                   const npc = npcById(quest.npcId);
                   const actionLabel = quest.claimed

@@ -81,48 +81,71 @@ function isNearWaterEdge(x: number, z: number): boolean {
   return waterNeighbor;
 }
 
+function riverEdgeStrength(x: number, z: number): number {
+  if (!acceptsShoreDecoration(x, z)) return 0;
+  const river = riverAmount(x, z);
+  if (river <= 0.12 || river >= 0.56) return 0;
+  const edge = 1 - Math.abs(river - 0.32) / 0.22;
+  return THREE.MathUtils.clamp(edge, 0, 1);
+}
+
 export function ShorelineDetails() {
+  const riverMudRef = useRef<THREE.InstancedMesh>(null);
   const wetRef = useRef<THREE.InstancedMesh>(null);
   const foamRef = useRef<THREE.InstancedMesh>(null);
   const pebbleRef = useRef<THREE.InstancedMesh>(null);
 
-  const { wetPatches, foamPatches, reeds, pebbles } = useMemo(() => {
+  const { riverMudPatches, wetPatches, foamPatches, reeds, pebbles } = useMemo(() => {
     const rng = makeRng(20240623);
     const half = WORLD.size / 2;
+    const riverMudPatches: Patch[] = [];
     const wetPatches: Patch[] = [];
     const foamPatches: Patch[] = [];
     const reeds: Reed[] = [];
     const pebbles: Pebble[] = [];
 
-    for (let i = 0; i < 3000; i++) {
+    for (let i = 0; i < 3800; i++) {
       const x = (rng() * 2 - 1) * half * 0.98;
       const z = (rng() * 2 - 1) * half * 0.98;
       if (!isNearWaterEdge(x, z)) continue;
       const h = groundHeight(x, z);
+      const riverEdge = riverEdgeStrength(x, z);
+
+      if (riverEdge > 0 && rng() < 0.78) {
+        const dx = riverAmount(x + 1.4, z) - riverAmount(x - 1.4, z);
+        const dz = riverAmount(x, z + 1.4) - riverAmount(x, z - 1.4);
+        riverMudPatches.push({
+          x: x + (rng() - 0.5) * 0.45,
+          z: z + (rng() - 0.5) * 0.45,
+          sx: 0.95 + riverEdge * 1.4 + rng() * 0.9,
+          sz: 0.18 + riverEdge * 0.34 + rng() * 0.18,
+          rot: Math.atan2(-dx, dz) + (rng() - 0.5) * 0.65,
+        });
+      }
 
       if (rng() > 0.34) {
         wetPatches.push({
           x,
           z,
-          sx: 0.7 + rng() * 1.5,
-          sz: 0.22 + rng() * 0.65,
+          sx: 0.7 + rng() * 1.5 + riverEdge * 0.65,
+          sz: 0.22 + rng() * 0.65 + riverEdge * 0.14,
           rot: rng() * Math.PI,
         });
       }
-      if (rng() > 0.76) {
+      if (rng() > (riverEdge > 0 ? 0.62 : 0.76)) {
         foamPatches.push({
           x: x + (rng() - 0.5) * 0.5,
           z: z + (rng() - 0.5) * 0.5,
-          sx: 0.35 + rng() * 1.0,
+          sx: 0.35 + rng() * 1.0 + riverEdge * 0.45,
           sz: 0.045 + rng() * 0.12,
           rot: rng() * Math.PI,
         });
       }
-      if (rng() > 0.68 && h > -0.75) {
+      if (rng() > (riverEdge > 0 ? 0.54 : 0.68) && h > -0.75) {
         reeds.push({
           x: x + (rng() - 0.5) * 0.8,
           z: z + (rng() - 0.5) * 0.8,
-          s: 0.65 + rng() * 0.75,
+          s: 0.65 + rng() * 0.75 + riverEdge * 0.28,
           rot: rng() * Math.PI * 2,
           phase: rng() * Math.PI * 2,
         });
@@ -137,14 +160,22 @@ export function ShorelineDetails() {
       }
     }
 
-    return { wetPatches, foamPatches, reeds, pebbles };
+    return { riverMudPatches, wetPatches, foamPatches, reeds, pebbles };
   }, []);
 
   const dummy = useMemo(() => new THREE.Object3D(), []);
   const reedChunks = useMemo(() => chunkByGrid(reeds, SHORE_CHUNK_SIZE), [reeds]);
 
   useLayoutEffect(() => {
-    if (!wetRef.current || !foamRef.current || !pebbleRef.current) return;
+    if (!riverMudRef.current || !wetRef.current || !foamRef.current || !pebbleRef.current) return;
+    riverMudPatches.forEach((p, i) => {
+      const y = groundHeight(p.x, p.z);
+      dummy.position.set(p.x, y + 0.012, p.z);
+      dummy.rotation.set(-Math.PI / 2, 0, p.rot);
+      dummy.scale.set(p.sx, p.sz, 1);
+      dummy.updateMatrix();
+      riverMudRef.current!.setMatrixAt(i, dummy.matrix);
+    });
     wetPatches.forEach((p, i) => {
       const y = groundHeight(p.x, p.z);
       dummy.position.set(p.x, y + 0.018, p.z);
@@ -169,20 +200,25 @@ export function ShorelineDetails() {
       dummy.updateMatrix();
       pebbleRef.current!.setMatrixAt(i, dummy.matrix);
     });
+    riverMudRef.current.instanceMatrix.needsUpdate = true;
     wetRef.current.instanceMatrix.needsUpdate = true;
     foamRef.current.instanceMatrix.needsUpdate = true;
     pebbleRef.current.instanceMatrix.needsUpdate = true;
-  }, [dummy, foamPatches, pebbles, wetPatches]);
+  }, [dummy, foamPatches, pebbles, riverMudPatches, wetPatches]);
 
   return (
     <group>
+      <instancedMesh ref={riverMudRef} args={[undefined, undefined, riverMudPatches.length]} receiveShadow>
+        <circleGeometry args={[0.5, 14]} />
+        <meshStandardMaterial color="#5f6641" transparent opacity={0.36} roughness={1} depthWrite={false} />
+      </instancedMesh>
       <instancedMesh ref={wetRef} args={[undefined, undefined, wetPatches.length]} receiveShadow>
         <circleGeometry args={[0.5, 16]} />
-        <meshStandardMaterial color="#7f765f" transparent opacity={0.32} roughness={1} depthWrite={false} />
+        <meshStandardMaterial color="#716b54" transparent opacity={0.34} roughness={1} depthWrite={false} />
       </instancedMesh>
       <instancedMesh ref={foamRef} args={[undefined, undefined, foamPatches.length]} receiveShadow>
         <circleGeometry args={[0.5, 10]} />
-        <meshBasicMaterial color="#d8eee8" transparent opacity={0.24} depthWrite={false} />
+        <meshBasicMaterial color="#e4f5ee" transparent opacity={0.27} depthWrite={false} />
       </instancedMesh>
       <instancedMesh ref={pebbleRef} args={[undefined, undefined, pebbles.length]} castShadow receiveShadow>
         <dodecahedronGeometry args={[1, 0]} />

@@ -200,11 +200,28 @@ export function riverAmount(x: number, z: number): number {
   const mainWidth = 4.2 + Math.sin(z * 0.05) * 0.35;
   const main = 1 - smoothstep(mainWidth, mainWidth + 2.4, mainDistance);
 
+  // 东河：从东北湿地汇入东侧海岸，只在东桥附近切过道路，避免把南部海滩路截断。
+  const eastPath: [number, number][] = [
+    [50, 72],
+    [47, 52],
+    [49, 32],
+    [46, 10],
+    [48, -6],
+    [56, -16],
+    [70, -22],
+  ];
+  let eastDistance = Number.POSITIVE_INFINITY;
+  for (let i = 0; i < eastPath.length - 1; i++) {
+    eastDistance = Math.min(eastDistance, distanceToSegment(x, z, eastPath[i], eastPath[i + 1]));
+  }
+  const eastWidth = 3.2 + Math.sin(z * 0.06 + 1.3) * 0.25;
+  const east = 1 - smoothstep(eastWidth, eastWidth + 1.8, eastDistance);
+
   const upperStream = 1 - smoothstep(2.2, 4.4, distanceToSegment(x, z, [-42, 38], [WATERFALL_X, WATERFALL_Z]));
   const lowerStream = 1 - smoothstep(2.8, 5.4, distanceToSegment(x, z, [WATERFALL_X, WATERFALL_Z], [-17, 31]));
   const pool = 1 - smoothstep(5.0, 8.5, distanceToPoint(x, z, [MAP_LAYOUT.waterfall.pool[0], MAP_LAYOUT.waterfall.pool[2]]));
 
-  const raw = Math.max(main, upperStream * 0.72, lowerStream * 0.82, pool * 0.95);
+  const raw = Math.max(main, east, upperStream * 0.72, lowerStream * 0.82, pool * 0.95);
   const protectedLand = protectedLandAmount(x, z);
   return raw * (1 - protectedLand * 0.92);
 }

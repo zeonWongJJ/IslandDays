@@ -5,6 +5,7 @@ import { NPCS, npcPositionAt } from '../../config/npcs.ts';
 import { ANIMALS, animalPositionAt } from '../../config/animals.ts';
 import { useGameStore } from '../../store/useGameStore.ts';
 import { BRIDGES, buildableAt, groundKind, roadAmount } from '../../systems/terrain.ts';
+import { getRegionObjectives, type RegionId } from '../../systems/regionObjectives.ts';
 
 const MAP_SIZE = 220;
 const CELLS = 44;
@@ -32,6 +33,10 @@ function toMap(x: number, z: number): { left: number; top: number } {
 export function MiniMap() {
   const player = useGameStore((s) => s.player);
   const minutes = useGameStore((s) => s.clock.minutes);
+  const clock = useGameStore((s) => s.clock);
+  const social = useGameStore((s) => s.social);
+  const regionProgress = useGameStore((s) => s.regionProgress);
+  const volleyball = useGameStore((s) => s.volleyball);
 
   const cells = useMemo(() => {
     const half = WORLD.size / 2;
@@ -56,10 +61,18 @@ export function MiniMap() {
   const housePos = toMap(HOUSE.pos[0], HOUSE.pos[2]);
   const shopPos = toMap(MAP_LAYOUT.shop.pos[0], MAP_LAYOUT.shop.pos[2]);
   const museumPos = toMap(MAP_LAYOUT.museum.pos[0], MAP_LAYOUT.museum.pos[2]);
+  const objectives = getRegionObjectives({ clock, social, regionProgress, volleyball });
+  const regionMarkers = (['ruins', 'beach', 'village'] as RegionId[]).map((region) => {
+    const regionObjectives = objectives.filter((objective) => objective.region === region);
+    return {
+      ...regionObjectives[0],
+      completed: regionObjectives.every((objective) => objective.completed),
+    };
+  });
 
   return (
     <div className="minimap-panel">
-      <div className="minimap-title">地图调试</div>
+      <div className="minimap-title">岛屿地图</div>
       <div className="minimap-canvas">
         {cells.map((cell, index) => (
           <span
@@ -102,6 +115,19 @@ export function MiniMap() {
           const pos = toMap(p[0], p[2]);
           return <span key={animal.id} className="minimap-animal" style={{ left: pos.left, top: pos.top, background: animal.color }} title={animal.name} />;
         })}
+        {regionMarkers.map((marker) => {
+          const pos = toMap(marker.x, marker.z);
+          return (
+            <span
+              key={marker.region}
+              className={`minimap-region-marker ${marker.completed ? 'complete' : ''}`}
+              style={{ left: pos.left, top: pos.top }}
+              title={`${marker.regionName}${marker.completed ? '（今日完成）' : ''}`}
+            >
+              {marker.completed ? '✓' : marker.icon}
+            </span>
+          );
+        })}
         <span className="minimap-player" style={{ left: playerPos.left, top: playerPos.top }} />
       </div>
       <div className="minimap-legend">
@@ -110,6 +136,7 @@ export function MiniMap() {
         <span><i style={{ background: COLORS.foundation }} />地基</span>
         <span><i style={{ background: '#6a4326' }} />桥</span>
         <span><i style={{ background: '#d9903d' }} />动物</span>
+        <span><i className="legend-objective" />区域目标</span>
         <span><i className="legend-player" />玩家</span>
       </div>
     </div>

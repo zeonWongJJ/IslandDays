@@ -21,12 +21,18 @@ export function Toasts() {
   return (
     <div className="toasts">
       {toasts.map((t) => (
-        <div key={t.id} className="toast">
+        <div key={t.id} className={`toast toast-${t.kind}`}>
           <span>{toastEmoji(t.text)}{t.text}</span>
         </div>
       ))}
     </div>
   );
+}
+
+export function CatchFlash() {
+  const flash = useGameStore((s) => s.flash);
+  if (flash <= 0) return null;
+  return <div className="catch-flash" style={{ opacity: flash }} />;
 }
 
 const GIFT_SLOTS: ItemId[] = ['flower_seed', 'fish_common', 'bug_common', 'sapling', 'wood', 'branch'];

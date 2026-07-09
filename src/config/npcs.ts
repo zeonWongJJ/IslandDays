@@ -1,5 +1,5 @@
 import type { Vec3 } from '../systems/save.ts';
-import { npcLayout } from './mapLayout.ts';
+import { MAP_LAYOUT, npcLayout } from './mapLayout.ts';
 import type { ItemId } from './items.ts';
 
 export type NpcId = 'mira' | 'tao' | 'lina';
@@ -18,6 +18,14 @@ export interface NpcDef {
   likes: ItemId[];
   giftResponses: string[];
   recipeUnlock: { threshold: number; recipe: ItemId } | null;
+}
+
+export type NpcScheduleActivity = 'idle' | 'walk' | 'wave' | 'work' | 'rest';
+
+export interface NpcScheduleState {
+  pos: Vec3;
+  activity: NpcScheduleActivity;
+  lookAt: Vec3 | null;
 }
 
 const LIKES_MIRA: ItemId[] = ['flower_seed', 'bug_common', 'bug_dragonfly', 'sapling'];
@@ -117,23 +125,41 @@ export function npcById(id: NpcId): NpcDef {
 }
 
 export function npcPositionAt(npc: NpcDef, minutes: number): Vec3 {
+  return npcScheduleAt(npc, minutes).pos;
+}
+
+export function npcScheduleAt(npc: NpcDef, minutes: number): NpcScheduleState {
   const hour = minutes / 60;
   const homeDoor: Vec3 = [npc.homePos[0], 0, npc.homePos[2] + 3.2];
-  if (hour < 7 || hour >= 21) return homeDoor;
-  if (hour < 10) return routePoint([homeDoor, npc.pos, npc.hangoutPos], minutes, 7 * 60, 0.18);
-  if (hour < 16) return routePoint([npc.pos, npc.hangoutPos, npc.eveningPos, npc.hangoutPos], minutes, 10 * 60, 0.24);
-  if (hour < 17) return routePoint([npc.hangoutPos, npc.eveningPos], minutes, 16 * 60, 0.2);
-  return routePoint([npc.eveningPos, npc.hangoutPos, homeDoor], minutes, 17 * 60, 0.22);
+  const market = npcMarketPos(npc.id);
+  const homeLookAt: Vec3 = [npc.homePos[0], 0, npc.homePos[2]];
+
+  if (hour < 7 || hour >= 21) return { pos: homeDoor, activity: 'rest', lookAt: homeLookAt };
+  if (hour < 8) return { pos: routePoint([homeDoor, npc.pos], minutes, 7 * 60, 60), activity: 'walk', lookAt: null };
+  if (hour < 10) return { pos: npc.pos, activity: 'work', lookAt: npc.hangoutPos };
+  if (hour < 11) return { pos: routePoint([npc.pos, npc.hangoutPos], minutes, 10 * 60, 60), activity: 'walk', lookAt: null };
+  if (hour < 13) return { pos: npc.hangoutPos, activity: npc.id === 'tao' ? 'idle' : 'wave', lookAt: MAP_LAYOUT.plaza.pos };
+  if (hour < 14.5) return { pos: routePoint([npc.hangoutPos, market], minutes, 13 * 60, 90), activity: 'walk', lookAt: null };
+  if (hour < 16) return { pos: market, activity: 'work', lookAt: MAP_LAYOUT.plaza.pos };
+  if (hour < 18) return { pos: routePoint([market, npc.eveningPos], minutes, 16 * 60, 120), activity: 'walk', lookAt: null };
+  if (hour < 19) return { pos: npc.eveningPos, activity: 'wave', lookAt: MAP_LAYOUT.plaza.pos };
+  return { pos: routePoint([npc.eveningPos, homeDoor], minutes, 19 * 60, 120), activity: 'walk', lookAt: homeLookAt };
 }
 
 function routePoint(points: Vec3[], minutes: number, startMinutes: number, segmentMinutes: number): Vec3 {
   if (points.length === 1) return points[0];
-  const progress = Math.max(0, minutes - startMinutes) / segmentMinutes;
-  const fromIndex = Math.floor(progress) % points.length;
-  const toIndex = (fromIndex + 1) % points.length;
+  const progress = Math.max(0, minutes - startMinutes) / Math.max(1, segmentMinutes);
+  const fromIndex = Math.min(points.length - 2, Math.floor(progress));
+  const toIndex = Math.min(points.length - 1, fromIndex + 1);
   const local = progress - Math.floor(progress);
   const t = smoothstep(Math.max(0, Math.min(1, (local - 0.16) / 0.68)));
   return lerpVec(points[fromIndex], points[toIndex], t);
+}
+
+function npcMarketPos(id: NpcId): Vec3 {
+  if (id === 'mira') return [MAP_LAYOUT.plaza.pos[0] - 2.2, 0, MAP_LAYOUT.plaza.pos[2] + 8.4];
+  if (id === 'tao') return [MAP_LAYOUT.plaza.pos[0] + 7.4, 0, MAP_LAYOUT.plaza.pos[2] + 6.6];
+  return [MAP_LAYOUT.plaza.pos[0] + 9.4, 0, MAP_LAYOUT.plaza.pos[2] - 5.8];
 }
 
 function lerpVec(a: Vec3, b: Vec3, tRaw: number): Vec3 {

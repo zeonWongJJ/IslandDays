@@ -131,8 +131,6 @@ function Drop({ itemId, pos }: { itemId: ItemId; pos: [number, number, number] }
         </mesh>
         }
       />
-      {/* 轻微高亮，提示可拾取 */}
-      <pointLight color={color} intensity={0.12} distance={1.2} position={[0, 0.2, 0]} />
     </group>
   );
 }

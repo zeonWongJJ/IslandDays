@@ -40,7 +40,15 @@ const KEYS: Key[] = [
 const SKY_BODY_DISTANCE = WORLD.size * 0.9;
 const SKY_BODY_MIN_HEIGHT = WORLD.size * 0.28;
 
-// 在两个关键时刻间插值
+// 在两个关键时刻间插值（复用缓存对象，避免每帧 GC）
+const _sampleResult: Key = {
+  hour: 0,
+  sunColor: new THREE.Color(),
+  sunIntensity: 0,
+  ambient: 0,
+  sky: new THREE.Color(),
+  fog: new THREE.Color(),
+};
 function sample(hour: number): Key {
   let prev = KEYS[0];
   let next = KEYS[KEYS.length - 1];
@@ -53,14 +61,13 @@ function sample(hour: number): Key {
   }
   const t = next.hour === prev.hour ? 0 : (hour - prev.hour) / (next.hour - prev.hour);
   const ts = t * t * (3 - 2 * t); // smoothstep
-  return {
-    hour,
-    sunColor: prev.sunColor.clone().lerp(next.sunColor, ts),
-    sunIntensity: THREE.MathUtils.lerp(prev.sunIntensity, next.sunIntensity, ts),
-    ambient: THREE.MathUtils.lerp(prev.ambient, next.ambient, ts),
-    sky: prev.sky.clone().lerp(next.sky, ts),
-    fog: prev.fog.clone().lerp(next.fog, ts),
-  };
+  _sampleResult.hour = hour;
+  _sampleResult.sunColor.copy(prev.sunColor).lerp(next.sunColor, ts);
+  _sampleResult.sunIntensity = THREE.MathUtils.lerp(prev.sunIntensity, next.sunIntensity, ts);
+  _sampleResult.ambient = THREE.MathUtils.lerp(prev.ambient, next.ambient, ts);
+  _sampleResult.sky.copy(prev.sky).lerp(next.sky, ts);
+  _sampleResult.fog.copy(prev.fog).lerp(next.fog, ts);
+  return _sampleResult;
 }
 
 export function DayNight() {
@@ -151,7 +158,7 @@ export function DayNight() {
       <directionalLight
         ref={sunRef}
         castShadow
-        shadow-mapSize={[2048, 2048]}
+        shadow-mapSize={[1024, 1024]}
         shadow-camera-left={-WORLD.size * 0.62}
         shadow-camera-right={WORLD.size * 0.62}
         shadow-camera-top={WORLD.size * 0.62}

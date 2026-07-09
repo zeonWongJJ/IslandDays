@@ -7,6 +7,7 @@ import { WORLD } from '../config/constants.ts';
 const STAR_COUNT = 2500;
 const SKY_BODY_DISTANCE = WORLD.size * 0.9;
 const SKY_BODY_MIN_HEIGHT = WORLD.size * 0.28;
+const _bodyPos = new THREE.Vector3();
 
 function starField() {
   const pos = new Float32Array(STAR_COUNT * 3);
@@ -85,13 +86,13 @@ export function SkyEffects() {
     const sunX = -Math.cos(sunAngle) * 22;
     const sunY = Math.sin(sunAngle) * 22 + 2;
 
-    const bodyPos = new THREE.Vector3(sunX, Math.max(sunY, 8), Math.sin(sunAngle * 0.5) * 6);
-    bodyPos.normalize().multiplyScalar(SKY_BODY_DISTANCE);
-    bodyPos.y = Math.max(bodyPos.y, SKY_BODY_MIN_HEIGHT);
+    _bodyPos.set(sunX, Math.max(sunY, 8), Math.sin(sunAngle * 0.5) * 6);
+    _bodyPos.normalize().multiplyScalar(SKY_BODY_DISTANCE);
+    _bodyPos.y = Math.max(_bodyPos.y, SKY_BODY_MIN_HEIGHT);
 
     // 太阳辉光
     if (sunGlowRef.current) {
-      sunGlowRef.current.position.copy(bodyPos);
+      sunGlowRef.current.position.copy(_bodyPos);
       sunGlowRef.current.position.y += 4;
       const nearHorizon = 1 - Math.abs(dayProg - 0.5) * 2;
       const glowSize = 18 + nearHorizon * 20;
@@ -103,7 +104,7 @@ export function SkyEffects() {
 
     // 月亮辉光
     if (moonGlowRef.current) {
-      moonGlowRef.current.position.set(-bodyPos.x, bodyPos.y + 2, -bodyPos.z);
+      moonGlowRef.current.position.set(-_bodyPos.x, _bodyPos.y + 2, -_bodyPos.z);
       moonGlowRef.current.scale.set(12, 12, 1);
       moonGlowRef.current.material.opacity = isDay ? 0 : 0.25;
     }

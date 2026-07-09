@@ -228,7 +228,13 @@ export function FishingController() {
     } else if (cur.phase === 'caught') {
       if (!caughtDone.current && now - phaseStart.current >= 1.8) {
         caughtDone.current = true;
-        if (cur.spotId) catchFish(cur.spotId);
+        if (cur.spotId) {
+          const flashBefore = useGameStore.getState().flash;
+          catchFish(cur.spotId);
+          const flashAfter = useGameStore.getState().flash;
+          if (flashAfter >= 1) soundManager.play('legendCatch');
+          else if (flashAfter > flashBefore) soundManager.play('rareCatch');
+        }
       }
     }
   });

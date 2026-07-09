@@ -716,6 +716,10 @@ export function Player() {
               if (succeeded) {
                 toolActionRef.current = { kind: 'net', elapsed: 0, duration: 0.42, burst: 1 };
                 soundManager.play('netSwing');
+                const flash = useGameStore.getState().flash;
+                if (flash >= 1) soundManager.play('legendCatch');
+                else if (flash > 0) soundManager.play('rareCatch');
+                else soundManager.play('catch');
               }
             }
           }
